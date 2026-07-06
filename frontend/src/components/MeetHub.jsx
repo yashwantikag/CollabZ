@@ -5,7 +5,8 @@ export default function MeetHub({
   setMeetingLinks, 
   scheduledMeetings = [], 
   setScheduledMeetings, 
-  onJoinMeeting 
+  onJoinMeeting,
+  onStartLocalVideo
 }) {
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [showJoinModal, setShowJoinModal] = useState(false)
@@ -40,6 +41,9 @@ export default function MeetHub({
     }
     
     setMeetingLinks([newLink, ...meetingLinks])
+    if (onStartLocalVideo) {
+      onStartLocalVideo()
+    }
   }
 
   // Schedule a Meeting

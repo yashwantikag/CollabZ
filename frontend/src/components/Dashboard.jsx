@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { io } from 'socket.io-client'
 import { encryptData, decryptData } from '../utils/cryptoHelper'
 import MeetHub from './MeetHub'
@@ -108,6 +108,18 @@ export default function Dashboard() {
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOn, setIsVideoOn] = useState(true)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
+  const [localStream, setLocalStream] = useState(null)
+  const [remoteStream, setRemoteStream] = useState(null)
+  const [isInCall, setIsInCall] = useState(false)
+
+  // --- WebRTC Refs ---
+  const pcRef = useRef(null)
+  const localStreamRef = useRef(null)
+
+  // Sync localStreamRef with localStream state for reliable unmount cleanup
+  useEffect(() => {
+    localStreamRef.current = localStream
+  }, [localStream])
 
   // --- Chat State ---
   const [messages, setMessages] = useState([
@@ -208,24 +220,147 @@ export default function Dashboard() {
     }
   }, [])
 
+  // --- WebRTC & Media Stream Helper Functions ---
+  const cleanupMedia = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop()
+        console.log(`[Meet] Gracefully stopped local track: ${track.kind}`)
+      })
+      setLocalStream(null)
+    }
+    if (pcRef.current) {
+      pcRef.current.close()
+      pcRef.current = null
+      console.log("[WebRTC] Closed PeerConnection")
+    }
+    setRemoteStream(null)
+  }, [])
+
+  const initWebRTC = useCallback((stream) => {
+    try {
+      if (pcRef.current) {
+        pcRef.current.close()
+      }
+
+      console.log("[WebRTC] Initializing RTCPeerConnection stubs...")
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      })
+
+      // Bind track event hooks safely
+      pc.ontrack = (event) => {
+        console.log("[WebRTC] Received remote stream track:", event.streams[0])
+        if (event.streams && event.streams[0]) {
+          setRemoteStream(event.streams[0])
+        }
+      }
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log("[WebRTC] Local candidate generated:", event.candidate)
+        }
+      }
+
+      // Add local tracks to peer connection
+      if (stream) {
+        stream.getTracks().forEach((track) => {
+          pc.addTrack(track, stream)
+        })
+      }
+
+      pcRef.current = pc
+    } catch (err) {
+      console.error("[WebRTC] Failed to initialize RTCPeerConnection:", err)
+    }
+  }, [])
+
+  const startLocalVideo = useCallback(async () => {
+    try {
+      console.log("[Meet] Initializing media stream capture...")
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      setLocalStream(stream)
+      initWebRTC(stream)
+      return stream
+    } catch (err) {
+      console.error("[Meet] Media access permission error:", err)
+    }
+  }, [initWebRTC])
+
+  // Callback refs to safely bind streams to HTML <video> elements
+  const setLocalVideoEl = useCallback((el) => {
+    if (el) {
+      el.srcObject = localStream
+    }
+  }, [localStream])
+
+  const setRemoteVideoEl = useCallback((el) => {
+    if (el) {
+      el.srcObject = remoteStream
+    }
+  }, [remoteStream])
+
+  // Keep audio track states in sync with isMuted state
+  useEffect(() => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0]
+      if (audioTrack) {
+        audioTrack.enabled = !isMuted
+      }
+    }
+  }, [isMuted, localStream])
+
+  // Keep video track states in sync with isVideoOn state
+  useEffect(() => {
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0]
+      if (videoTrack) {
+        videoTrack.enabled = isVideoOn
+      }
+    }
+  }, [isVideoOn, localStream])
+
+  // Release camera & microphone on unmount
+  useEffect(() => {
+    return () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop())
+      }
+      if (pcRef.current) {
+        pcRef.current.close()
+      }
+    }
+  }, [])
+
   // --- Meet Module Handlers ---
-  const handleJoinMeeting = (roomId) => {
+  const handleJoinMeeting = async (roomId) => {
     setActiveRoomId(roomId)
+    setIsInCall(true)
     if (socketRef.current) {
       socketRef.current.emit('join-meeting', { roomId, userName: 'Yashwantika G.' })
     }
     navigateToView('meet')
+    await startLocalVideo()
   }
 
   const handleLeaveMeeting = () => {
     if (socketRef.current && activeRoomId) {
       socketRef.current.emit('leave-meeting', { roomId: activeRoomId, userName: 'Yashwantika G.' })
     }
+    cleanupMedia()
+    setIsInCall(false)
     setActiveRoomId(null)
     setIsExplainMode(false)
     setExplainModeSpeaker(null)
     setShowCallWhiteboard(false)
   }
+
+  // Auto-leave active call if current view changes away from 'meet'
+  useEffect(() => {
+    if (currentView !== 'meet' && activeRoomId) {
+      handleLeaveMeeting()
+    }
+  }, [currentView, activeRoomId])
 
   // --- Chat logic ---
   const handleSendMessage = async (e) => {
@@ -415,18 +550,20 @@ export default function Dashboard() {
         <div className="flex-1 grid grid-rows-2 gap-2 overflow-hidden min-h-[220px]">
           {/* You */}
           <div className="relative rounded-xl border border-slate-850 bg-slate-950 overflow-hidden flex flex-col justify-center items-center">
-            {isVideoOn ? (
-              <div className="w-full h-full bg-slate-900 flex items-center justify-center relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent"></div>
-                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs select-none">Y</div>
-                <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">You</span>
-              </div>
-            ) : (
+            <video
+              ref={setLocalVideoEl}
+              muted
+              autoPlay
+              playsInline
+              className={`w-full h-full object-cover ${isVideoOn ? '' : 'hidden'}`}
+            />
+            {!isVideoOn && (
               <div className="text-center p-3 select-none">
                 <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-500 flex items-center justify-center font-bold text-xs mx-auto mb-1">Y</div>
                 <span className="text-[9px] text-slate-500 font-medium block">Camera Off</span>
               </div>
             )}
+            <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">You</span>
             <span className="absolute top-2 right-2 flex h-2 w-2">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isMuted ? 'bg-rose-400' : 'bg-emerald-400'}`}></span>
               <span className={`relative inline-flex rounded-full h-2 w-2 ${isMuted ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
@@ -435,12 +572,21 @@ export default function Dashboard() {
 
           {/* Sarah Jenkins */}
           <div className="relative rounded-xl border border-slate-850 bg-slate-950 overflow-hidden flex flex-col justify-center items-center">
-            <div className="w-full h-full bg-slate-900 flex items-center justify-center relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent"></div>
-              <div className="w-8 h-8 rounded-full bg-pink-600/30 border border-pink-500/30 text-pink-400 flex items-center justify-center font-bold text-xs select-none">SJ</div>
-              <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">Sarah Jenkins</span>
-              <span className="absolute top-2 right-2 text-[8px] bg-slate-950/60 border border-slate-800 text-indigo-400 font-mono px-1 rounded select-none">Screen Sharing</span>
-            </div>
+            {remoteStream ? (
+              <video
+                ref={setRemoteVideoEl}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-slate-900 flex items-center justify-center relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent"></div>
+                <div className="w-8 h-8 rounded-full bg-pink-650/30 border border-pink-500/30 text-pink-400 flex items-center justify-center font-bold text-xs select-none">SJ</div>
+                <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">Sarah Jenkins</span>
+                <span className="absolute top-2 right-2 text-[8px] bg-slate-950/60 border border-slate-800 text-indigo-400 font-mono px-1 rounded select-none">Screen Sharing</span>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -483,7 +629,15 @@ export default function Dashboard() {
         </div>
 
         <button
-          onClick={() => setIsInCall(!isInCall)}
+          onClick={() => {
+            const nextCallState = !isInCall
+            setIsInCall(nextCallState)
+            if (nextCallState) {
+              startLocalVideo()
+            } else {
+              cleanupMedia()
+            }
+          }}
           className={`px-3.5 py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${isInCall ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-md' : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 shadow-md'}`}
         >
           {isInCall ? 'Leave' : 'Join'}
@@ -632,6 +786,7 @@ export default function Dashboard() {
           scheduledMeetings={scheduledMeetings}
           setScheduledMeetings={setScheduledMeetings}
           onJoinMeeting={handleJoinMeeting}
+          onStartLocalVideo={startLocalVideo}
         />
       )
     }
@@ -709,35 +864,46 @@ export default function Dashboard() {
                     <div className="w-full h-full grid grid-rows-3 lg:grid-rows-1 lg:grid-cols-3 gap-6 overflow-hidden">
                       <div className="lg:col-span-1 grid grid-cols-2 lg:grid-cols-1 gap-4 overflow-y-auto pr-1">
                         <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
-                          {isVideoOn ? (
-                            <div className="w-full h-full bg-slate-900 flex items-center justify-center relative">
-                              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent"></div>
-                              <div className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">Y</div>
-                              <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">You</span>
-                            </div>
-                          ) : (
+                          <video
+                            ref={setLocalVideoEl}
+                            muted
+                            autoPlay
+                            playsInline
+                            className={`w-full h-full object-cover ${isVideoOn ? '' : 'hidden'}`}
+                          />
+                          {!isVideoOn && (
                             <div className="text-center p-3 select-none">
                               <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-500 flex items-center justify-center font-bold text-xs mx-auto mb-1">Y</div>
                               <span className="text-[9px] text-slate-500 font-medium block">Camera Off</span>
                             </div>
                           )}
+                          <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">You</span>
                           <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${isMuted ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
                         </div>
 
                         <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
-                          <div className="w-full h-full bg-slate-900 flex items-center justify-center relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent"></div>
-                            <div className="w-10 h-10 rounded-full bg-pink-650/30 border border-pink-500/30 text-pink-400 flex items-center justify-center font-bold text-sm">SJ</div>
-                            <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">Sarah Jenkins</span>
-                            <span className="absolute top-2 right-2 flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </span>
-                          </div>
+                          {remoteStream ? (
+                            <video
+                              ref={setRemoteVideoEl}
+                              autoPlay
+                              playsInline
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-slate-900 flex items-center justify-center relative select-none">
+                              <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent"></div>
+                              <div className="w-10 h-10 rounded-full bg-pink-650/30 border border-pink-500/30 text-pink-400 flex items-center justify-center font-bold text-sm">SJ</div>
+                              <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">Sarah Jenkins</span>
+                              <span className="absolute top-2 right-2 flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
-                          <div className="w-full h-full bg-slate-900 flex items-center justify-center relative">
+                          <div className="w-full h-full bg-slate-900 flex items-center justify-center relative select-none">
                             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
                             <div className="w-10 h-10 rounded-full bg-emerald-650/30 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-sm">AR</div>
                             <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">Alex Rivera</span>
@@ -762,40 +928,45 @@ export default function Dashboard() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pr-1">
-                      <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[200px]">
-                        {isVideoOn ? (
-                          <div className="w-full h-full bg-slate-900 flex items-center justify-center relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent"></div>
-                            <div className="w-12 h-12 rounded-full bg-indigo-650 text-white flex items-center justify-center font-bold text-sm border-2 border-indigo-500">Y</div>
-                            <span className="absolute bottom-3 left-3 text-[10px] font-mono text-slate-400 bg-slate-950/80 px-2 py-0.5 rounded">You (Yashwantika)</span>
-                          </div>
+                    <div className="flex-1 flex flex-col gap-6 overflow-hidden relative">
+                      {/* Flexible larger responsive container for remote participant */}
+                      <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden relative flex items-center justify-center min-h-[300px]">
+                        {remoteStream ? (
+                          <video
+                            ref={setRemoteVideoEl}
+                            autoPlay
+                            playsInline
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
-                          <div className="text-center p-4">
-                            <div className="w-12 h-12 rounded-full bg-slate-850 text-slate-500 flex items-center justify-center font-bold text-sm mx-auto mb-2">Y</div>
-                            <span className="text-xs text-slate-500 font-medium block">Camera Off</span>
+                          <div className="text-center p-6 space-y-4 select-none z-10">
+                            <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center font-bold text-lg mx-auto shadow-xl animate-pulse">
+                              SJ
+                            </div>
+                            <div className="space-y-1">
+                              <span className="text-xs font-bold text-slate-200 block">Sarah Jenkins (Remote Partner)</span>
+                              <span className="text-[10px] text-slate-500 font-mono block">Waiting for remote user stream track...</span>
+                            </div>
                           </div>
                         )}
-                        <span className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${isMuted ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                      </div>
 
-                      <div className="rounded-2xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[200px]">
-                        <div className="w-full h-full bg-slate-900 flex items-center justify-center relative">
-                          <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent"></div>
-                          <div className="w-12 h-12 rounded-full bg-pink-650/30 border-2 border-pink-500/30 text-pink-400 flex items-center justify-center font-bold text-sm animate-pulse">SJ</div>
-                          <span className="absolute bottom-3 left-3 text-[10px] font-mono text-slate-400 bg-slate-950/80 px-2 py-0.5 rounded">Sarah Jenkins</span>
-                          <span className="absolute top-3 right-3 flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[200px]">
-                        <div className="w-full h-full bg-slate-900 flex items-center justify-center relative">
-                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
-                          <div className="w-12 h-12 rounded-full bg-emerald-650/30 border-2 border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-sm">AR</div>
-                          <span className="absolute bottom-3 left-3 text-[10px] font-mono text-slate-400 bg-slate-950/80 px-2 py-0.5 rounded">Alex Rivera</span>
+                        {/* Small floating corner tile for local participant */}
+                        <div className="absolute bottom-4 right-4 w-40 h-28 sm:w-48 sm:h-36 rounded-xl border border-slate-800 bg-slate-950 shadow-2xl overflow-hidden z-20 transition-all duration-300 hover:scale-105">
+                          <video
+                            ref={setLocalVideoEl}
+                            muted
+                            autoPlay
+                            playsInline
+                            className={`w-full h-full object-cover ${isVideoOn ? '' : 'hidden'}`}
+                          />
+                          {!isVideoOn && (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 select-none">
+                              <div className="w-8 h-8 rounded-full bg-slate-850 text-slate-500 flex items-center justify-center font-bold text-xs">Y</div>
+                              <span className="text-[9px] text-slate-500 mt-1 block">Camera Off</span>
+                            </div>
+                          )}
+                          <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-300 bg-slate-950/80 px-1.5 py-0.5 rounded">You</span>
+                          <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${isMuted ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
                         </div>
                       </div>
                     </div>
