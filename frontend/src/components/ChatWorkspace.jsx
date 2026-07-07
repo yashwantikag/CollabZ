@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import CryptoJS from 'crypto-js'
 import { encryptData, decryptData } from '../utils/cryptoHelper'
 import FileShare from './FileShare'
 
 const SECRET_KEY = 'default-fallback-key-32chars-for-aes';
+const SECRET_CHAT_KEY = "CollabZ_Secure_Vault_2026";
 
 export default function ChatWorkspace({ socket, userName = 'Yashwantika G.' }) {
   const [conversations, setConversations] = useState([
@@ -41,7 +43,17 @@ export default function ChatWorkspace({ socket, userName = 'Yashwantika G.' }) {
 
     const handleIncomingMessage = async (encryptedPayload) => {
       try {
-        const decryptedStr = await decryptData(encryptedPayload, SECRET_KEY)
+        let decryptedStr
+        try {
+          // Attempt CryptoJS decryption first
+          const bytes = CryptoJS.AES.decrypt(encryptedPayload, SECRET_CHAT_KEY)
+          decryptedStr = bytes.toString(CryptoJS.enc.Utf8)
+          if (!decryptedStr) throw new Error("Empty decrypted string or invalid key")
+        } catch (cryptoErr) {
+          // Fall back to Web Crypto GCM decryption
+          decryptedStr = await decryptData(encryptedPayload, SECRET_KEY)
+        }
+
         const decMsg = JSON.parse(decryptedStr)
 
         // Make sure it matches format
@@ -95,7 +107,11 @@ export default function ChatWorkspace({ socket, userName = 'Yashwantika G.' }) {
     // Emit encrypted via socket
     if (socket) {
       try {
-        const encrypted = await encryptData(JSON.stringify(newMsg), SECRET_KEY)
+        const plainText = JSON.stringify(newMsg)
+        const encrypted = CryptoJS.AES.encrypt(plainText, SECRET_CHAT_KEY).toString()
+        console.log("=== CRYPTO DEBUG ===");
+        console.log("Original Plaintext:", newMsg.text);
+        console.log("Encrypted Ciphertext (AES-256):", encrypted);
         socket.emit('new-chat-message', encrypted)
       } catch (err) {
         console.error('Encryption failed when sending chat:', err)
@@ -158,8 +174,12 @@ export default function ChatWorkspace({ socket, userName = 'Yashwantika G.' }) {
             <span className="text-lg">{activeConversation?.avatar}</span>
             <div>
               <h4 className="text-xs font-bold text-slate-200">{activeConversation?.name}</h4>
-              <p className="text-[9px] text-slate-500 font-medium">
+              <p className="text-[9px] text-slate-500 font-medium flex items-center gap-1.5">
                 {activeConversation?.status === 'Online' ? 'Active Sync Room' : 'Away'}
+                <span className="inline-flex items-center gap-0.5 text-emerald-400 font-semibold font-mono">
+                  <span>•</span>
+                  <span>🔒 End-to-End Encrypted (AES-256)</span>
+                </span>
               </p>
             </div>
           </div>

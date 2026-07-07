@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import CryptoJS from 'crypto-js'
 import { io } from 'socket.io-client'
 import { encryptData, decryptData } from '../utils/cryptoHelper'
 import MeetHub from './MeetHub'
@@ -8,6 +9,7 @@ import ChatWorkspace from './ChatWorkspace'
 import ContactsDirectory from './ContactsDirectory'
 
 const SECRET_KEY = import.meta.env.VITE_SOCKET_ENCRYPTION_KEY || 'default-fallback-key-32chars-for-aes';
+const SECRET_CHAT_KEY = "CollabZ_Secure_Vault_2026";
 
 export default function Dashboard() {
   const socketRef = useRef(null)
@@ -176,7 +178,14 @@ export default function Dashboard() {
     // Listen for encrypted chat messages
     socketRef.current.on('receive-chat-message', async (encryptedPayload) => {
       try {
-        const decryptedString = await decryptData(encryptedPayload, SECRET_KEY);
+        let decryptedString
+        try {
+          const bytes = CryptoJS.AES.decrypt(encryptedPayload, SECRET_CHAT_KEY)
+          decryptedString = bytes.toString(CryptoJS.enc.Utf8)
+          if (!decryptedString) throw new Error("Empty decrypted string")
+        } catch (cryptoErr) {
+          decryptedString = await decryptData(encryptedPayload, SECRET_KEY)
+        }
         const incomingMessage = JSON.parse(decryptedString);
         incomingMessage.self = false;
         setMessages((prev) => [...prev, incomingMessage]);
@@ -385,7 +394,8 @@ export default function Dashboard() {
     // Emit encrypted message to socket
     if (socketRef.current) {
       try {
-        const encrypted = await encryptData(JSON.stringify(newMessage), SECRET_KEY);
+        const plainText = JSON.stringify(newMessage)
+        const encrypted = CryptoJS.AES.encrypt(plainText, SECRET_CHAT_KEY).toString()
         socketRef.current.emit('new-chat-message', encrypted);
       } catch (err) {
         console.error('Encryption failed for chat message:', err);

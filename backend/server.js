@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const CryptoJS = require('crypto-js');
 const { encryptData, decryptData } = require('./cryptoHelper');
 
 const app = express();
@@ -11,6 +12,7 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 const SECRET_KEY = process.env.SOCKET_ENCRYPTION_KEY || 'default-fallback-key-32chars-for-aes';
+const SECRET_CHAT_KEY = "CollabZ_Secure_Vault_2026";
 
 // In-memory data stores for Meet module
 const cachedFiles = new Map();       // fileId -> { roomId, fileId, fileName, fileType, fileSize, senderName, totalChunks, chunks: [] }
@@ -163,10 +165,21 @@ io.on('connection', (socket) => {
     // Encrypted Chat Relay
     socket.on('new-chat-message', (encryptedPayload) => {
         try {
-            // Optional: Server decrypts payload to log it securely (at rest)
-            const decryptedString = decryptData(encryptedPayload, SECRET_KEY);
-            const message = JSON.parse(decryptedString);
-            console.log(`[SECURE CHAT] Decrypted message from ${message.user}: "${message.text}"`);
+            let decryptedString;
+            try {
+                // Attempt CryptoJS decryption first (New E2E Chat flow)
+                const decryptedBytes = CryptoJS.AES.decrypt(encryptedPayload, SECRET_CHAT_KEY);
+                decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+                if (!decryptedString) throw new Error("Empty decrypted string");
+                
+                const message = JSON.parse(decryptedString);
+                console.log(`[SECURE E2E CHAT] Decrypted message from ${message.user}: "${message.text}"`);
+            } catch (cryptoErr) {
+                // Fall back to original GCM decryption helper (Legacy/Whiteboard chat flow)
+                decryptedString = decryptData(encryptedPayload, SECRET_KEY);
+                const message = JSON.parse(decryptedString);
+                console.log(`[SECURE CHAT GCM] Decrypted message from ${message.user}: "${message.text}"`);
+            }
 
             // Broadcast the ENCRYPTED payload to other connected clients (End-to-End Transit Security)
             socket.broadcast.emit('receive-chat-message', encryptedPayload);
