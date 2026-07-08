@@ -117,11 +117,19 @@ export default function Dashboard() {
   // --- WebRTC Refs ---
   const pcRef = useRef(null)
   const localStreamRef = useRef(null)
+  const activeRoomIdRef = useRef(null)
+  const localVideoRef = useRef(null)
+  const remoteVideoRef = useRef(null)
 
   // Sync localStreamRef with localStream state for reliable unmount cleanup
   useEffect(() => {
     localStreamRef.current = localStream
   }, [localStream])
+
+  // Sync activeRoomIdRef with activeRoomId state for access in socket listeners
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoomId
+  }, [activeRoomId])
 
   // --- Chat State ---
   const [messages, setMessages] = useState([
@@ -214,8 +222,80 @@ export default function Dashboard() {
       setExplainModeSpeaker(data.isExplainMode ? data.speakerName : null);
     });
 
-    socketRef.current.on('user-joined-meeting', (data) => {
+    socketRef.current.on('user-joined-meeting', async (data) => {
       console.log(`[MEET] User joined: ${data.userName}`);
+      if (pcRef.current) {
+        try {
+          ensureTracksAdded(pcRef.current, localStreamRef.current);
+          console.log("[WebRTC] Creating SDP offer...");
+          const offer = await pcRef.current.createOffer();
+          await pcRef.current.setLocalDescription(offer);
+          socketRef.current.emit('video-offer', {
+            roomId: activeRoomIdRef.current,
+            offer: offer
+          });
+        } catch (err) {
+          console.error("[WebRTC] Error creating offer on user-joined-meeting:", err);
+        }
+      }
+    });
+
+    socketRef.current.on('user-joined-room', async (data) => {
+      console.log(`[SIGNALLING] User joined room: ${data.userName}`);
+      if (pcRef.current) {
+        try {
+          ensureTracksAdded(pcRef.current, localStreamRef.current);
+          console.log("[WebRTC] Creating SDP offer...");
+          const offer = await pcRef.current.createOffer();
+          await pcRef.current.setLocalDescription(offer);
+          socketRef.current.emit('video-offer', {
+            roomId: activeRoomIdRef.current,
+            offer: offer
+          });
+        } catch (err) {
+          console.error("[WebRTC] Error creating offer on user-joined-room:", err);
+        }
+      }
+    });
+
+    socketRef.current.on('video-offer', async (data) => {
+      console.log("[WebRTC] Received video-offer");
+      if (pcRef.current) {
+        try {
+          ensureTracksAdded(pcRef.current, localStreamRef.current);
+          await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+          const answer = await pcRef.current.createAnswer();
+          await pcRef.current.setLocalDescription(answer);
+          socketRef.current.emit('video-answer', {
+            roomId: activeRoomIdRef.current,
+            answer: answer
+          });
+        } catch (err) {
+          console.error("[WebRTC] Error handling video offer:", err);
+        }
+      }
+    });
+
+    socketRef.current.on('video-answer', async (data) => {
+      console.log("[WebRTC] Received video-answer");
+      if (pcRef.current) {
+        try {
+          await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+        } catch (err) {
+          console.error("[WebRTC] Error setting remote description from answer:", err);
+        }
+      }
+    });
+
+    socketRef.current.on('new-ice-candidate', async (data) => {
+      console.log("[WebRTC] Received remote ICE candidate");
+      if (pcRef.current && data.candidate) {
+        try {
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } catch (err) {
+          console.error("[WebRTC] Error adding remote ICE candidate:", err);
+        }
+      }
     });
 
     socketRef.current.on('user-left-meeting', (data) => {
@@ -246,6 +326,18 @@ export default function Dashboard() {
     setRemoteStream(null)
   }, [])
 
+  const ensureTracksAdded = useCallback((pc, stream) => {
+    if (!pc || !stream) return
+    const senders = pc.getSenders()
+    stream.getTracks().forEach((track) => {
+      const alreadyAdded = senders.some(sender => sender.track === track)
+      if (!alreadyAdded) {
+        console.log(`[WebRTC] Defensively adding track: ${track.kind}`)
+        pc.addTrack(track, stream)
+      }
+    })
+  }, [])
+
   const initWebRTC = useCallback((stream) => {
     try {
       if (pcRef.current) {
@@ -262,12 +354,21 @@ export default function Dashboard() {
         console.log("[WebRTC] Received remote stream track:", event.streams[0])
         if (event.streams && event.streams[0]) {
           setRemoteStream(event.streams[0])
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = event.streams[0]
+          }
         }
       }
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log("[WebRTC] Local candidate generated:", event.candidate)
+          console.log("[WebRTC] Local ICE candidate found, emitting...")
+          if (socketRef.current && activeRoomIdRef.current) {
+            socketRef.current.emit('new-ice-candidate', {
+              roomId: activeRoomIdRef.current,
+              candidate: event.candidate
+            })
+          }
         }
       }
 
@@ -298,12 +399,14 @@ export default function Dashboard() {
 
   // Callback refs to safely bind streams to HTML <video> elements
   const setLocalVideoEl = useCallback((el) => {
+    localVideoRef.current = el
     if (el) {
       el.srcObject = localStream
     }
   }, [localStream])
 
   const setRemoteVideoEl = useCallback((el) => {
+    remoteVideoRef.current = el
     if (el) {
       el.srcObject = remoteStream
     }
@@ -345,11 +448,16 @@ export default function Dashboard() {
   const handleJoinMeeting = async (roomId) => {
     setActiveRoomId(roomId)
     setIsInCall(true)
+    navigateToView('meet')
+    
+    // 1. Capture local media and configure RTCPeerConnection FIRST
+    await startLocalVideo()
+    
+    // 2. Only emit join events after signaling state and local tracks are ready
     if (socketRef.current) {
       socketRef.current.emit('join-meeting', { roomId, userName: 'Yashwantika G.' })
+      socketRef.current.emit('join-room', { roomId, userName: 'Yashwantika G.' })
     }
-    navigateToView('meet')
-    await startLocalVideo()
   }
 
   const handleLeaveMeeting = () => {
@@ -788,301 +896,38 @@ export default function Dashboard() {
 
   // 3.5. Meet Module View Rendering
   const renderMeetView = () => {
-    if (!activeRoomId) {
-      return (
-        <MeetHub
-          meetingLinks={meetingLinks}
-          setMeetingLinks={setMeetingLinks}
-          scheduledMeetings={scheduledMeetings}
-          setScheduledMeetings={setScheduledMeetings}
-          onJoinMeeting={handleJoinMeeting}
-          onStartLocalVideo={startLocalVideo}
-        />
-      )
-    }
-
     return (
-      <div className="flex h-full w-full bg-[#080c14] overflow-hidden select-text relative">
-        <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-          
-          {/* Active meeting header */}
-          <div className="h-14 px-6 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between select-none">
-            <div className="flex items-center gap-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-              <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                Sync Room: <span className="font-mono text-indigo-400 font-bold">{activeRoomId}</span>
-              </h3>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] text-slate-500 font-mono">00:14:32</span>
-              {isExplainMode && (
-                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase animate-pulse">
-                  Explain Mode Active ({explainModeSpeaker})
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Call content grid */}
-          <div className="flex-1 p-6 relative overflow-hidden">
-            {isExplainMode ? (
-              <div className="w-full h-full grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
-                {/* Presenter Feed */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent"></div>
-                  <div className="text-center p-6 space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-indigo-650/30 border-2 border-indigo-500 text-white flex items-center justify-center font-bold text-lg mx-auto shadow-2xl animate-pulse">
-                      {explainModeSpeaker ? explainModeSpeaker.split(' ').map(n => n[0]).join('') : 'SP'}
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-200 block">{explainModeSpeaker} (Presenter)</span>
-                      <span className="text-[10px] text-slate-500 font-mono mt-1 block">Broadcasting Live Media Stream</span>
-                    </div>
-                  </div>
-                  
-                  <span className="absolute bottom-4 left-4 flex items-center gap-2 text-[10px] bg-slate-900/80 px-2 py-1 rounded font-mono text-slate-400">
-                    <span className="flex h-1.5 w-1.5 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
-                    </span>
-                    Audio Stream Active
-                  </span>
-                </div>
-
-                {/* Shared Whiteboard Canvas */}
-                <div className="rounded-2xl border border-slate-800 overflow-hidden relative">
-                  <Whiteboard 
-                    socket={socketRef.current}
-                    roomId={activeRoomId}
-                    userName="Yashwantika G."
-                    history={wbHistory}
-                    setHistory={setWbHistory}
-                    historyIndex={wbHistoryIndex}
-                    setHistoryIndex={setWbHistoryIndex}
-                    isExplainMode={isExplainMode}
-                    setIsExplainMode={setIsExplainMode}
-                    explainModeSpeaker={explainModeSpeaker}
-                    inCall={true}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="w-full h-full flex flex-col lg:flex-row gap-6 overflow-hidden">
-                <div className="flex-1 flex flex-col gap-6 overflow-hidden">
-                  {showCallWhiteboard ? (
-                    <div className="w-full h-full grid grid-rows-3 lg:grid-rows-1 lg:grid-cols-3 gap-6 overflow-hidden">
-                      <div className="lg:col-span-1 grid grid-cols-2 lg:grid-cols-1 gap-4 overflow-y-auto pr-1">
-                        <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
-                          <video
-                            ref={setLocalVideoEl}
-                            muted
-                            autoPlay
-                            playsInline
-                            className={`w-full h-full object-cover ${isVideoOn ? '' : 'hidden'}`}
-                          />
-                          {!isVideoOn && (
-                            <div className="text-center p-3 select-none">
-                              <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-500 flex items-center justify-center font-bold text-xs mx-auto mb-1">Y</div>
-                              <span className="text-[9px] text-slate-500 font-medium block">Camera Off</span>
-                            </div>
-                          )}
-                          <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">You</span>
-                          <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${isMuted ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                        </div>
-
-                        <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
-                          {remoteStream ? (
-                            <video
-                              ref={setRemoteVideoEl}
-                              autoPlay
-                              playsInline
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-slate-900 flex items-center justify-center relative select-none">
-                              <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent"></div>
-                              <div className="w-10 h-10 rounded-full bg-pink-650/30 border border-pink-500/30 text-pink-400 flex items-center justify-center font-bold text-sm">SJ</div>
-                              <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">Sarah Jenkins</span>
-                              <span className="absolute top-2 right-2 flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
-                          <div className="w-full h-full bg-slate-900 flex items-center justify-center relative select-none">
-                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
-                            <div className="w-10 h-10 rounded-full bg-emerald-650/30 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-sm">AR</div>
-                            <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">Alex Rivera</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="lg:col-span-2 rounded-2xl border border-slate-800 overflow-hidden relative min-h-[250px]">
-                        <Whiteboard 
-                          socket={socketRef.current}
-                          roomId={activeRoomId}
-                          userName="Yashwantika G."
-                          history={wbHistory}
-                          setHistory={setWbHistory}
-                          historyIndex={wbHistoryIndex}
-                          setHistoryIndex={setWbHistoryIndex}
-                          isExplainMode={isExplainMode}
-                          setIsExplainMode={setIsExplainMode}
-                          explainModeSpeaker={explainModeSpeaker}
-                          inCall={true}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex flex-col gap-6 overflow-hidden relative">
-                      {/* Flexible larger responsive container for remote participant */}
-                      <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden relative flex items-center justify-center min-h-[300px]">
-                        {remoteStream ? (
-                          <video
-                            ref={setRemoteVideoEl}
-                            autoPlay
-                            playsInline
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="text-center p-6 space-y-4 select-none z-10">
-                            <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center font-bold text-lg mx-auto shadow-xl animate-pulse">
-                              SJ
-                            </div>
-                            <div className="space-y-1">
-                              <span className="text-xs font-bold text-slate-200 block">Sarah Jenkins (Remote Partner)</span>
-                              <span className="text-[10px] text-slate-500 font-mono block">Waiting for remote user stream track...</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Small floating corner tile for local participant */}
-                        <div className="absolute bottom-4 right-4 w-40 h-28 sm:w-48 sm:h-36 rounded-xl border border-slate-800 bg-slate-950 shadow-2xl overflow-hidden z-20 transition-all duration-300 hover:scale-105">
-                          <video
-                            ref={setLocalVideoEl}
-                            muted
-                            autoPlay
-                            playsInline
-                            className={`w-full h-full object-cover ${isVideoOn ? '' : 'hidden'}`}
-                          />
-                          {!isVideoOn && (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 select-none">
-                              <div className="w-8 h-8 rounded-full bg-slate-850 text-slate-500 flex items-center justify-center font-bold text-xs">Y</div>
-                              <span className="text-[9px] text-slate-500 mt-1 block">Camera Off</span>
-                            </div>
-                          )}
-                          <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-300 bg-slate-950/80 px-1.5 py-0.5 rounded">You</span>
-                          <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${isMuted ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {showCallFiles && (
-                  <div className="w-full lg:w-80 flex-shrink-0 flex flex-col gap-4 overflow-hidden border-t lg:border-t-0 lg:border-l border-slate-850/80 pl-0 lg:pl-6 pt-6 lg:pt-0">
-                    <FileShare 
-                      socket={socketRef.current}
-                      roomId={activeRoomId}
-                      userName="Yashwantika G."
-                      files={meetingFiles}
-                      setFiles={setMeetingFiles}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Active Call Control Bar */}
-          <div className="h-20 bg-slate-950 border-t border-slate-850 px-8 flex items-center justify-between select-none z-20">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-3 py-1.5 rounded-xl font-mono">
-                Room ID: {activeRoomId}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsMuted(!isMuted)}
-                className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
-                  isMuted 
-                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' 
-                    : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
-                }`}
-                title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
-              >
-                {isMuted ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
-                  </svg>
-                )}
-              </button>
-
-              <button
-                onClick={() => setIsVideoOn(!isVideoOn)}
-                className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
-                  !isVideoOn 
-                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' 
-                    : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
-                }`}
-                title={isVideoOn ? 'Turn Camera Off' : 'Turn Camera On'}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                </svg>
-              </button>
-
-              {!isExplainMode && (
-                <button
-                  onClick={() => setShowCallWhiteboard(!showCallWhiteboard)}
-                  className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
-                    showCallWhiteboard 
-                      ? 'bg-indigo-600 text-white border-indigo-500' 
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                  }`}
-                  title="Collaborative Canvas"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
-                  </svg>
-                </button>
-              )}
-
-              <button
-                onClick={() => setShowCallFiles(!showCallFiles)}
-                className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
-                  showCallFiles 
-                    ? 'bg-indigo-600 text-white border-indigo-500' 
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-                title="Shared Files & History"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                </svg>
-              </button>
-            </div>
-
-            <div>
-              <button
-                onClick={handleLeaveMeeting}
-                className="px-6 py-3 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-rose-600/15"
-              >
-                End Session
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <MeetHub
+        roomID={activeRoomId}
+        meetingLinks={meetingLinks}
+        setMeetingLinks={setMeetingLinks}
+        scheduledMeetings={scheduledMeetings}
+        setScheduledMeetings={setScheduledMeetings}
+        onJoinMeeting={handleJoinMeeting}
+        onLeaveMeeting={handleLeaveMeeting}
+        onStartLocalVideo={startLocalVideo}
+        localVideoRef={setLocalVideoEl}
+        remoteVideoRef={setRemoteVideoEl}
+        remoteStream={remoteStream}
+        isVideoOn={isVideoOn}
+        setIsVideoOn={setIsVideoOn}
+        isMuted={isMuted}
+        setIsMuted={setIsMuted}
+        showCallWhiteboard={showCallWhiteboard}
+        setShowCallWhiteboard={setShowCallWhiteboard}
+        showCallFiles={showCallFiles}
+        setShowCallFiles={setShowCallFiles}
+        socket={socketRef.current}
+        wbHistory={wbHistory}
+        setWbHistory={setWbHistory}
+        wbHistoryIndex={wbHistoryIndex}
+        setWbHistoryIndex={setWbHistoryIndex}
+        isExplainMode={isExplainMode}
+        setIsExplainMode={setIsExplainMode}
+        explainModeSpeaker={explainModeSpeaker}
+        meetingFiles={meetingFiles}
+        setMeetingFiles={setMeetingFiles}
+      />
     )
   }
 

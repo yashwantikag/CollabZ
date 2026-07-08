@@ -197,6 +197,32 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- WebRTC Signaling Handlers ---
+    socket.on('join-room', (data) => {
+        const { roomId, userName } = data;
+        socket.join(roomId);
+        console.log(`[SIGNALLING] User ${userName} (${socket.id}) joined room: ${roomId}`);
+        socket.to(roomId).emit('user-joined-room', { userId: socket.id, userName });
+    });
+
+    socket.on('video-offer', (data) => {
+        const { roomId } = data;
+        console.log(`[SIGNALLING] forwarding video-offer in room ${roomId}`);
+        socket.to(roomId).emit('video-offer', data);
+    });
+
+    socket.on('video-answer', (data) => {
+        const { roomId } = data;
+        console.log(`[SIGNALLING] forwarding video-answer in room ${roomId}`);
+        socket.to(roomId).emit('video-answer', data);
+    });
+
+    socket.on('new-ice-candidate', (data) => {
+        const { roomId } = data;
+        console.log(`[SIGNALLING] forwarding new-ice-candidate in room ${roomId}`);
+        socket.to(roomId).emit('new-ice-candidate', data);
+    });
+
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);
     });
