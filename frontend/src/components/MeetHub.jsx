@@ -49,84 +49,6 @@ export default function MeetHub({
 
   // Copy State for active session
   const [copied, setCopied] = useState(false)
-  
-  // Create a Meeting Link
-  const handleCreateMeetingLink = () => {
-    const part1 = Math.random().toString(36).substring(2, 5)
-    const part2 = Math.floor(1000 + Math.random() * 9000)
-    const part3 = Math.random().toString(36).substring(2, 5)
-    const randomCode = `${part1}-${part2}-${part3}`
-    const fullUrl = `${window.location.origin}/meet/${randomCode}`
-    
-    const newLink = {
-      id: `meet_${Date.now()}`,
-      name: `Sync Session ${meetingLinks.length + 1}`,
-      code: randomCode,
-      url: fullUrl,
-      createdAt: new Date().toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      })
-    }
-    
-    setMeetingLinks([newLink, ...meetingLinks])
-    if (onStartLocalVideo) {
-      onStartLocalVideo()
-    }
-  }
-
-  // Schedule a Meeting
-  const handleScheduleMeeting = (e) => {
-    e.preventDefault()
-    if (!schedName || !schedDate || !schedTime) return
-
-    const part1 = Math.random().toString(36).substring(2, 5)
-    const part2 = Math.floor(1000 + Math.random() * 9000)
-    const part3 = Math.random().toString(36).substring(2, 5)
-    const randomCode = `${part1}-${part2}-${part3}`
-    const fullUrl = `${window.location.origin}/meet/${randomCode}`
-
-    const newSched = {
-      id: `sched_${Date.now()}`,
-      name: schedName,
-      date: schedDate,
-      time: schedTime,
-      description: schedDesc || 'Project sync session',
-      code: randomCode,
-      url: fullUrl
-    }
-
-    setScheduledMeetings([newSched, ...scheduledMeetings])
-    
-    // Reset form
-    setSchedName('')
-    setSchedDate('')
-    setSchedTime('')
-    setSchedDesc('')
-    setShowScheduleModal(false)
-  }
-
-  // Join by Code/URL
-  const handleJoinByCode = (e) => {
-    e.preventDefault()
-    if (!joinCode.trim()) return
-    
-    // Extract code if user pasted full URL
-    let cleanCode = joinCode.trim()
-    if (cleanCode.includes('/meet/')) {
-      cleanCode = cleanCode.split('/meet/').pop()
-    }
-
-    onJoinMeeting(cleanCode)
-    setJoinCode('')
-    setShowJoinModal(false)
-  }
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    alert(`Copied secure link: ${text}`)
-  }
 
   // Local video DOM element reference
   const localVideoElRef = useRef(null)
@@ -227,6 +149,84 @@ export default function MeetHub({
       await startScreenShare()
     }
   }
+  
+  // Create a Meeting Link
+  const handleCreateMeetingLink = () => {
+    const part1 = Math.random().toString(36).substring(2, 5)
+    const part2 = Math.floor(1000 + Math.random() * 9000)
+    const part3 = Math.random().toString(36).substring(2, 5)
+    const randomCode = `${part1}-${part2}-${part3}`
+    const fullUrl = `${window.location.origin}/meet/${randomCode}`
+    
+    const newLink = {
+      id: `meet_${Date.now()}`,
+      name: `Sync Session ${meetingLinks.length + 1}`,
+      code: randomCode,
+      url: fullUrl,
+      createdAt: new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+    }
+    
+    setMeetingLinks([newLink, ...meetingLinks])
+    if (onStartLocalVideo) {
+      onStartLocalVideo()
+    }
+  }
+
+  // Schedule a Meeting
+  const handleScheduleMeeting = (e) => {
+    e.preventDefault()
+    if (!schedName || !schedDate || !schedTime) return
+
+    const part1 = Math.random().toString(36).substring(2, 5)
+    const part2 = Math.floor(1000 + Math.random() * 9000)
+    const part3 = Math.random().toString(36).substring(2, 5)
+    const randomCode = `${part1}-${part2}-${part3}`
+    const fullUrl = `${window.location.origin}/meet/${randomCode}`
+
+    const newSched = {
+      id: `sched_${Date.now()}`,
+      name: schedName,
+      date: schedDate,
+      time: schedTime,
+      description: schedDesc || 'Project sync session',
+      code: randomCode,
+      url: fullUrl
+    }
+
+    setScheduledMeetings([newSched, ...scheduledMeetings])
+    
+    // Reset form
+    setSchedName('')
+    setSchedDate('')
+    setSchedTime('')
+    setSchedDesc('')
+    setShowScheduleModal(false)
+  }
+
+  // Join by Code/URL
+  const handleJoinByCode = (e) => {
+    e.preventDefault()
+    if (!joinCode.trim()) return
+    
+    // Extract code if user pasted full URL
+    let cleanCode = joinCode.trim()
+    if (cleanCode.includes('/meet/')) {
+      cleanCode = cleanCode.split('/meet/').pop()
+    }
+
+    onJoinMeeting(cleanCode)
+    setJoinCode('')
+    setShowJoinModal(false)
+  }
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+    alert(`Copied secure link: ${text}`)
+  }
 
   // Copy Active Room Invite Link
   const handleCopyInvite = () => {
@@ -246,22 +246,22 @@ export default function MeetHub({
   // If we are in an active session, render the active call view
   if (roomID) {
     return (
-      <div className="flex h-full w-full bg-[#080c14] overflow-hidden select-text relative">
+      <div className="flex h-full w-full bg-brandBg overflow-hidden select-text relative">
         <div className="flex-1 flex flex-col h-full relative overflow-hidden">
           
           {/* Active meeting header */}
-          <div className="h-14 px-6 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between select-none">
+          <div className="h-14 px-6 border-b border-slate-800 bg-brandCard/40 flex items-center justify-between select-none">
             <div className="flex items-center gap-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-              <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                Sync Room: <span className="font-mono text-indigo-400 font-bold">{roomID}</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-brandPrimary animate-pulse"></span>
+              <h3 className="text-xs font-bold text-brandText uppercase tracking-wider">
+                Sync Room: <span className="font-mono text-brandPrimary font-bold">{roomID}</span>
               </h3>
             </div>
             
             <div className="flex items-center gap-3">
               <span className="text-[10px] text-slate-500 font-mono">00:14:32</span>
               {isExplainMode && (
-                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase animate-pulse">
+                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-brandPrimary/10 text-brandPrimary border border-brandPrimary/20 uppercase animate-pulse">
                   Explain Mode Active ({explainModeSpeaker})
                 </span>
               )}
@@ -273,22 +273,22 @@ export default function MeetHub({
             {isExplainMode ? (
               <div className="w-full h-full grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
                 {/* Presenter Feed */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent"></div>
+                <div className="rounded-2xl border border-slate-800 bg-brandBg overflow-hidden relative flex flex-col justify-center items-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-brandPrimary/10 to-transparent"></div>
                   <div className="text-center p-6 space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-indigo-650/30 border-2 border-indigo-500 text-white flex items-center justify-center font-bold text-lg mx-auto shadow-2xl animate-pulse">
+                    <div className="w-16 h-16 rounded-full bg-brandPrimary/25 border-2 border-brandPrimary text-white flex items-center justify-center font-bold text-lg mx-auto shadow-2xl animate-pulse">
                       {explainModeSpeaker ? explainModeSpeaker.split(' ').map(n => n[0]).join('') : 'SP'}
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-slate-200 block">{explainModeSpeaker} (Presenter)</span>
+                      <span className="text-xs font-bold text-brandText block">{explainModeSpeaker} (Presenter)</span>
                       <span className="text-[10px] text-slate-500 font-mono mt-1 block">Broadcasting Live Media Stream</span>
                     </div>
                   </div>
                   
-                  <span className="absolute bottom-4 left-4 flex items-center gap-2 text-[10px] bg-slate-900/80 px-2 py-1 rounded font-mono text-slate-400">
+                  <span className="absolute bottom-4 left-4 flex items-center gap-2 text-[10px] bg-brandCard/90 px-2 py-1 rounded font-mono text-slate-400 border border-slate-800">
                     <span className="flex h-1.5 w-1.5 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brandPrimary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-brandPrimary"></span>
                     </span>
                     Audio Stream Active
                   </span>
@@ -317,7 +317,7 @@ export default function MeetHub({
                   {showCallWhiteboard ? (
                     <div className="w-full h-full grid grid-rows-3 lg:grid-rows-1 lg:grid-cols-3 gap-6 overflow-hidden">
                       <div className="lg:col-span-1 grid grid-cols-2 lg:grid-cols-1 gap-4 overflow-y-auto pr-1">
-                        <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
+                        <div className="rounded-xl border border-slate-800 bg-brandCard overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
                           <video
                             ref={(el) => {
                               if (localVideoRef) localVideoRef(el);
@@ -330,15 +330,15 @@ export default function MeetHub({
                           />
                           {!isVideoOn && (
                             <div className="text-center p-3 select-none">
-                              <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-500 flex items-center justify-center font-bold text-xs mx-auto mb-1">Y</div>
-                              <span className="text-[9px] text-slate-500 font-medium block">Camera Off</span>
+                              <div className="w-8 h-8 rounded-full bg-brandBg text-slate-500 border border-slate-800 flex items-center justify-center font-bold text-xs mx-auto mb-1">Y</div>
+                              <span className="text-[9px] text-slate-550 font-medium block text-slate-500">Camera Off</span>
                             </div>
                           )}
-                          <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">You</span>
-                          <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${isMuted ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+                          <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-brandBg/90 border border-slate-800 px-1.5 py-0.5 rounded">You</span>
+                          <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${isMuted ? 'bg-rose-500' : 'bg-brandPrimary'}`}></span>
                         </div>
 
-                        <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
+                        <div className="rounded-xl border border-slate-800 bg-brandCard overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
                           {remoteStream ? (
                             <video
                               ref={remoteVideoRef}
@@ -347,23 +347,23 @@ export default function MeetHub({
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full bg-slate-900 flex items-center justify-center relative select-none">
-                              <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent"></div>
-                              <div className="w-10 h-10 rounded-full bg-pink-650/30 border border-pink-500/30 text-pink-400 flex items-center justify-center font-bold text-sm">SJ</div>
-                              <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">Sarah Jenkins</span>
+                            <div className="w-full h-full bg-brandBg flex items-center justify-center relative select-none">
+                              <div className="absolute inset-0 bg-gradient-to-br from-brandPrimary/10 to-transparent"></div>
+                              <div className="w-10 h-10 rounded-full bg-brandPrimary/20 border border-brandPrimary/30 text-brandPrimary flex items-center justify-center font-bold text-sm">SJ</div>
+                              <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-brandCard/90 border border-slate-800 px-1.5 py-0.5 rounded">Sarah Jenkins</span>
                               <span className="absolute top-2 right-2 flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brandSuccess opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-brandSuccess"></span>
                               </span>
                             </div>
                           )}
                         </div>
 
-                        <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
-                          <div className="w-full h-full bg-slate-900 flex items-center justify-center relative select-none">
-                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent"></div>
-                            <div className="w-10 h-10 rounded-full bg-emerald-650/30 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-sm">AR</div>
-                            <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-slate-950/80 px-1.5 py-0.5 rounded">Alex Rivera</span>
+                        <div className="rounded-xl border border-slate-800 bg-brandCard overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
+                          <div className="w-full h-full bg-brandBg flex items-center justify-center relative select-none">
+                            <div className="absolute inset-0 bg-gradient-to-br from-brandPrimary/5 to-transparent"></div>
+                            <div className="w-10 h-10 rounded-full bg-brandCard border border-slate-800 text-slate-400 flex items-center justify-center font-bold text-sm">AR</div>
+                            <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-400 bg-brandCard/90 border border-slate-800 px-1.5 py-0.5 rounded">Alex Rivera</span>
                           </div>
                         </div>
                       </div>
@@ -387,7 +387,7 @@ export default function MeetHub({
                   ) : (
                     <div className="flex-1 flex flex-col gap-6 overflow-hidden relative">
                       {/* Flexible larger responsive container for remote participant */}
-                      <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden relative flex items-center justify-center min-h-[300px]">
+                      <div className="flex-1 rounded-2xl border border-slate-800 bg-brandCard overflow-hidden relative flex items-center justify-center min-h-[300px]">
                         {remoteStream ? (
                           <video
                             ref={remoteVideoRef}
@@ -397,18 +397,18 @@ export default function MeetHub({
                           />
                         ) : (
                           <div className="text-center p-6 space-y-4 select-none z-10">
-                            <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 text-slate-400 flex items-center justify-center font-bold text-lg mx-auto shadow-xl animate-pulse">
+                            <div className="w-16 h-16 rounded-full bg-brandBg border border-slate-800 text-brandPrimary flex items-center justify-center font-bold text-lg mx-auto shadow-xl animate-pulse">
                               SJ
                             </div>
                             <div className="space-y-1">
-                              <span className="text-xs font-bold text-slate-200 block">Sarah Jenkins (Remote Partner)</span>
+                              <span className="text-xs font-bold text-brandText block">Sarah Jenkins (Remote Partner)</span>
                               <span className="text-[10px] text-slate-500 font-mono block">Waiting for remote user stream track...</span>
                             </div>
                           </div>
                         )}
 
                         {/* Small floating corner tile for local participant */}
-                        <div className="absolute bottom-4 right-4 w-40 h-28 sm:w-48 sm:h-36 rounded-xl border border-slate-800 bg-slate-950 shadow-2xl overflow-hidden z-20 transition-all duration-300 hover:scale-105">
+                        <div className="absolute bottom-4 right-4 w-40 h-28 sm:w-48 sm:h-36 rounded-xl border border-slate-800 bg-brandBg shadow-2xl overflow-hidden z-20 transition-all duration-300 hover:scale-105">
                           <video
                             ref={(el) => {
                               if (localVideoRef) localVideoRef(el);
@@ -420,13 +420,13 @@ export default function MeetHub({
                             className={`w-full h-full object-cover ${isVideoOn ? '' : 'hidden'}`}
                           />
                           {!isVideoOn && (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 select-none">
-                              <div className="w-8 h-8 rounded-full bg-slate-850 text-slate-500 flex items-center justify-center font-bold text-xs">Y</div>
-                              <span className="text-[9px] text-slate-500 mt-1 block">Camera Off</span>
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-brandCard select-none">
+                              <div className="w-8 h-8 rounded-full bg-brandBg border border-slate-800 text-slate-500 flex items-center justify-center font-bold text-xs">Y</div>
+                              <span className="text-[9px] text-slate-550 mt-1 block text-slate-500">Camera Off</span>
                             </div>
                           )}
-                          <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-355 bg-slate-950/80 px-1.5 py-0.5 rounded">You</span>
-                          <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${isMuted ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+                          <span className="absolute bottom-2 left-2 text-[9px] font-mono text-slate-350 bg-brandBg/90 border border-slate-800 px-1.5 py-0.5 rounded">You</span>
+                          <span className={`absolute top-2 right-2 w-2 h-2 rounded-full ${isMuted ? 'bg-rose-500' : 'bg-brandPrimary'}`}></span>
                         </div>
                       </div>
                     </div>
@@ -434,7 +434,7 @@ export default function MeetHub({
                 </div>
 
                 {showCallFiles && (
-                  <div className="w-full lg:w-80 flex-shrink-0 flex flex-col gap-4 overflow-hidden border-t lg:border-t-0 lg:border-l border-slate-850/80 pl-0 lg:pl-6 pt-6 lg:pt-0">
+                  <div className="w-full lg:w-80 flex-shrink-0 flex flex-col gap-4 overflow-hidden border-t lg:border-t-0 lg:border-l border-slate-800 pl-0 lg:pl-6 pt-6 lg:pt-0">
                     <FileShare 
                       socket={socket}
                       roomId={roomID}
@@ -449,13 +449,13 @@ export default function MeetHub({
           </div>
 
           {/* Active Call Control Bar */}
-          <div className="h-20 bg-slate-950 border-t border-slate-850 px-8 flex items-center justify-between select-none z-20">
+          <div className="h-20 bg-brandCard border-t border-slate-800 px-8 flex items-center justify-between select-none z-20">
             {/* Styled professional copy invite container */}
-            <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 shadow-sm hover:border-slate-700/50 transition-all select-none">
+            <div className="flex items-center gap-3 bg-brandBg border border-slate-800 rounded-xl px-3 py-1.5 shadow-sm hover:border-slate-700/50 transition-all select-none">
               <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-brandPrimary animate-pulse"></span>
                 <span className="text-[10px] text-slate-400 font-mono tracking-wide">
-                  Room ID: <span className="text-indigo-400 font-bold">{roomID}</span>
+                  Room ID: <span className="text-brandPrimary font-bold">{roomID}</span>
                 </span>
               </div>
               
@@ -463,11 +463,11 @@ export default function MeetHub({
 
               <button
                 onClick={handleCopyInvite}
-                className="flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-slate-200 font-bold transition-all duration-200 active:scale-95 focus:outline-none"
+                className="flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-brandText font-bold transition-all duration-200 active:scale-95 focus:outline-none"
                 title="Copy structured invite text to clipboard"
               >
                 {copied ? (
-                  <span className="text-emerald-450 flex items-center gap-1 transition-all duration-300">
+                  <span className="text-brandSuccess flex items-center gap-1 transition-all duration-300">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                       <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
                     </svg>
@@ -475,7 +475,7 @@ export default function MeetHub({
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5 group">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-350 transition-colors">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
                     </svg>
                     Copy Invite
@@ -490,7 +490,7 @@ export default function MeetHub({
                 className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
                   isMuted 
                     ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' 
-                    : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                    : 'bg-brandCard border border-slate-800 text-slate-300 hover:bg-slate-800'
                 }`}
                 title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
               >
@@ -510,7 +510,7 @@ export default function MeetHub({
                 className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
                   !isVideoOn 
                     ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' 
-                    : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                    : 'bg-brandCard border border-slate-800 text-slate-300 hover:bg-slate-800'
                 }`}
                 title={isVideoOn ? 'Turn Camera Off' : 'Turn Camera On'}
               >
@@ -523,8 +523,8 @@ export default function MeetHub({
                 onClick={toggleScreenShare}
                 className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
                   isScreenSharing 
-                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/10' 
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                    ? 'bg-brandPrimary text-brandBg border-brandPrimary shadow-brandPrimary/10' 
+                    : 'bg-brandCard border border-slate-800 text-slate-450 hover:text-brandText hover:bg-slate-800'
                 }`}
                 title={isScreenSharing ? 'Stop Screen Sharing' : 'Share Screen'}
               >
@@ -538,8 +538,8 @@ export default function MeetHub({
                   onClick={() => setShowCallWhiteboard(!showCallWhiteboard)}
                   className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
                     showCallWhiteboard 
-                      ? 'bg-indigo-600 text-white border-indigo-500' 
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      ? 'bg-brandPrimary text-brandBg border-brandPrimary' 
+                      : 'bg-brandCard border border-slate-800 text-slate-400 hover:text-brandText hover:bg-slate-800'
                   }`}
                   title="Collaborative Canvas"
                 >
@@ -553,8 +553,8 @@ export default function MeetHub({
                 onClick={() => setShowCallFiles(!showCallFiles)}
                 className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
                   showCallFiles 
-                    ? 'bg-indigo-650 text-white border-indigo-500' 
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    ? 'bg-brandPrimary text-brandBg border-brandPrimary' 
+                    : 'bg-brandCard border border-slate-800 text-slate-400 hover:text-brandText hover:bg-slate-800'
                 }`}
                 title="Shared Files & History"
               >
@@ -580,14 +580,14 @@ export default function MeetHub({
 
   // Lobby rendering when not in an active roomID
   return (
-    <div className="p-8 h-full overflow-y-auto space-y-8 select-text">
+    <div className="p-8 h-full overflow-y-auto space-y-8 select-text bg-brandBg">
       
       {/* Glow welcome banner */}
-      <div className="relative rounded-2xl border border-slate-800/80 bg-gradient-to-r from-indigo-950/20 via-slate-900 to-purple-950/20 p-8 overflow-hidden">
-        <div className="absolute inset-0 bg-indigo-500/5 blur-xl rounded-2xl"></div>
+      <div className="relative rounded-2xl border border-slate-800/80 bg-gradient-to-r from-brandPrimary/5 via-brandCard to-brandSuccess/5 p-8 overflow-hidden">
+        <div className="absolute inset-0 bg-brandPrimary/5 blur-xl rounded-2xl"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
-            <h3 className="text-2xl font-extrabold text-white">Video Meetings & Presentations</h3>
+            <h3 className="text-2xl font-extrabold text-brandText animate-pulse">Video Meetings & Presentations</h3>
             <p className="text-slate-400 text-xs max-w-2xl leading-relaxed">
               Initiate instant video calls, schedule collaborative drawing sessions, share files securely, and present in split-screen Explain Mode.
             </p>
@@ -595,7 +595,7 @@ export default function MeetHub({
           <div className="flex gap-3 flex-shrink-0">
             <button 
               onClick={() => setShowJoinModal(true)} 
-              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 text-xs font-bold text-slate-200 border border-slate-800 transition-all active:scale-95 shadow-md"
+              className="px-4 py-2.5 rounded-xl bg-brandCard hover:bg-slate-800 text-xs font-bold text-slate-200 border border-slate-800 transition-all active:scale-95 shadow-md"
             >
               Join with Code
             </button>
@@ -609,20 +609,20 @@ export default function MeetHub({
         {/* Create Link Card */}
         <div 
           onClick={handleCreateMeetingLink}
-          className="p-6 rounded-2xl border border-slate-800/60 bg-slate-900/10 hover:bg-slate-900/20 transition-all cursor-pointer group hover:border-indigo-500/50 flex flex-col justify-between h-44 select-none relative overflow-hidden"
+          className="p-6 rounded-2xl border border-slate-800/60 bg-brandCard/30 hover:bg-brandCard/60 transition-all cursor-pointer group hover:border-brandPrimary/50 flex flex-col justify-between h-44 select-none relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-indigo-500/0 group-hover:bg-indigo-500/5 transition-all duration-300 blur-xl rounded-2xl"></div>
+          <div className="absolute inset-0 bg-brandPrimary/0 group-hover:bg-brandPrimary/5 transition-all duration-300 blur-xl rounded-2xl"></div>
           <div className="flex items-center justify-between z-10">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-xl bg-brandPrimary/10 text-brandPrimary border border-brandPrimary/20 flex items-center justify-center text-lg">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
               </svg>
             </div>
-            <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Instant</span>
+            <span className="text-[10px] font-bold text-brandPrimary uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Instant</span>
           </div>
           <div className="space-y-1.5 z-10">
-            <h4 className="text-sm font-bold text-slate-100">Create a meeting link</h4>
-            <p className="text-[11px] text-slate-400 leading-normal">
+            <h4 className="text-sm font-bold text-brandText">Create a meeting link</h4>
+            <p className="text-[11px] text-slate-450 leading-normal text-slate-400">
               Generate a unique workspace link to share with colleagues for instant connection.
             </p>
           </div>
@@ -631,19 +631,19 @@ export default function MeetHub({
         {/* Schedule Card */}
         <div 
           onClick={() => setShowScheduleModal(true)}
-          className="p-6 rounded-2xl border border-slate-800/60 bg-slate-900/10 hover:bg-slate-900/20 transition-all cursor-pointer group hover:border-emerald-500/50 flex flex-col justify-between h-44 select-none relative overflow-hidden"
+          className="p-6 rounded-2xl border border-slate-800/60 bg-brandCard/30 hover:bg-brandCard/60 transition-all cursor-pointer group hover:border-brandSuccess/50 flex flex-col justify-between h-44 select-none relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/5 transition-all duration-300 blur-xl rounded-2xl"></div>
+          <div className="absolute inset-0 bg-brandSuccess/0 group-hover:bg-brandSuccess/5 transition-all duration-300 blur-xl rounded-2xl"></div>
           <div className="flex items-center justify-between z-10">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-xl bg-brandSuccess/10 text-brandSuccess border border-brandSuccess/20 flex items-center justify-center text-lg">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
               </svg>
             </div>
-            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Calendar</span>
+            <span className="text-[10px] font-bold text-brandSuccess uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Calendar</span>
           </div>
           <div className="space-y-1.5 z-10">
-            <h4 className="text-sm font-bold text-slate-100">Schedule a meeting</h4>
+            <h4 className="text-sm font-bold text-brandText">Schedule a meeting</h4>
             <p className="text-[11px] text-slate-400 leading-normal">
               Book a meeting for later and add it directly to your scheduled synchronization list.
             </p>
@@ -653,19 +653,19 @@ export default function MeetHub({
         {/* Join by ID Card */}
         <div 
           onClick={() => setShowJoinModal(true)}
-          className="p-6 rounded-2xl border border-slate-800/60 bg-slate-900/10 hover:bg-slate-900/20 transition-all cursor-pointer group hover:border-purple-500/50 flex flex-col justify-between h-44 select-none relative overflow-hidden"
+          className="p-6 rounded-2xl border border-slate-800/60 bg-brandCard/30 hover:bg-brandCard/60 transition-all cursor-pointer group hover:border-brandPrimary/50 flex flex-col justify-between h-44 select-none relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/5 transition-all duration-300 blur-xl rounded-2xl"></div>
+          <div className="absolute inset-0 bg-brandPrimary/0 group-hover:bg-brandPrimary/5 transition-all duration-300 blur-xl rounded-2xl"></div>
           <div className="flex items-center justify-between z-10">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-xl bg-brandPrimary/10 text-brandPrimary border border-brandPrimary/20 flex items-center justify-center text-lg">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
               </svg>
             </div>
-            <span className="text-[10px] font-bold text-purple-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Access</span>
+            <span className="text-[10px] font-bold text-brandPrimary uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Access</span>
           </div>
           <div className="space-y-1.5 z-10">
-            <h4 className="text-sm font-bold text-slate-100">Join with a meeting ID</h4>
+            <h4 className="text-sm font-bold text-brandText">Join with a meeting ID</h4>
             <p className="text-[11px] text-slate-400 leading-normal">
               Enter an existing meeting ID or room code to participate in an active collaboration.
             </p>
@@ -677,18 +677,18 @@ export default function MeetHub({
       {/* Meeting Links Section */}
       <div className="space-y-4">
         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider select-none flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-brandPrimary"></span>
           Generated Meeting Links
         </h4>
 
         {meetingLinks.length === 0 ? (
-          <div className="text-center py-10 border border-dashed border-slate-800/80 rounded-2xl bg-slate-900/5 select-none text-slate-500 text-xs">
+          <div className="text-center py-10 border border-dashed border-slate-800/80 rounded-2xl bg-brandCard/20 select-none text-slate-500 text-xs">
             No meeting links created yet. Click "Create a meeting link" above to start.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {meetingLinks.map(link => (
-              <div key={link.id} className="p-5 rounded-2xl border border-slate-800 bg-slate-900/15 flex flex-col justify-between space-y-4 hover:border-slate-700/80 transition-all relative">
+              <div key={link.id} className="p-5 rounded-2xl border border-slate-800 bg-brandCard/40 flex flex-col justify-between space-y-4 hover:border-brandPrimary/50 transition-all relative">
                 
                 {/* Dismiss (Delete) Button */}
                 <button
@@ -696,7 +696,7 @@ export default function MeetHub({
                     e.stopPropagation()
                     setMeetingLinks(meetingLinks.filter(l => l.id !== link.id))
                   }}
-                  className="absolute top-4 right-4 text-slate-500 hover:text-rose-400 transition-all p-1 hover:bg-rose-500/10 rounded-lg"
+                  className="absolute top-4 right-4 text-slate-500 hover:text-rose-450 transition-all p-1 hover:bg-rose-500/10 rounded-lg"
                   title="Delete Link"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
@@ -706,22 +706,22 @@ export default function MeetHub({
 
                 <div className="space-y-1 pr-6">
                   <span className="text-[9px] text-slate-500 font-mono block">{link.createdAt}</span>
-                  <h5 className="text-xs font-bold text-slate-200">{link.name}</h5>
-                  <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/5 border border-indigo-500/10 px-2 py-0.5 rounded inline-block mt-1 select-all break-all">
+                  <h5 className="text-xs font-bold text-brandText">{link.name}</h5>
+                  <span className="text-[10px] font-mono text-brandPrimary bg-brandPrimary/5 border border-brandPrimary/10 px-2 py-0.5 rounded inline-block mt-1 select-all break-all">
                     {link.url || `${window.location.origin}/meet/${link.code}`}
                   </span>
                 </div>
                 
-                <div className="flex items-center gap-2 pt-2 border-t border-slate-900/60">
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-800/60">
                   <button 
                     onClick={() => onJoinMeeting(link.code)}
-                    className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-[10px] uppercase transition-all shadow-md"
+                    className="flex-1 py-2 rounded-lg bg-brandPrimary hover:bg-brandPrimary/90 active:scale-95 text-brandBg font-bold text-[10px] uppercase transition-all shadow-md"
                   >
                     Join
                   </button>
                   <button 
                     onClick={() => copyToClipboard(link.url || `${window.location.origin}/meet/${link.code}`)}
-                    className="px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-850 hover:text-slate-200 text-slate-400 transition-all active:scale-95 flex items-center justify-center"
+                    className="px-3 py-2 rounded-lg bg-brandCard border border-slate-800 hover:bg-slate-800 hover:text-brandText text-slate-400 transition-all active:scale-95 flex items-center justify-center"
                     title="Copy Share Link"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
@@ -738,20 +738,20 @@ export default function MeetHub({
       {/* Scheduled Meetings Tracker */}
       <div className="space-y-4">
         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider select-none flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-brandSuccess"></span>
           Scheduled Meetings Tracking
         </h4>
 
         {scheduledMeetings.length === 0 ? (
-          <div className="text-center py-10 border border-dashed border-slate-800/80 rounded-2xl bg-slate-900/5 select-none text-slate-500 text-xs">
+          <div className="text-center py-10 border border-dashed border-slate-800/80 rounded-2xl bg-brandCard/25 select-none text-slate-500 text-xs">
             No scheduled meetings tracked. Click "Schedule a meeting" to book a future sync.
           </div>
         ) : (
-          <div className="border border-slate-800/80 bg-slate-900/10 rounded-2xl overflow-hidden">
+          <div className="border border-slate-800/80 bg-brandCard/20 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/40 text-[10px] font-bold text-slate-500 uppercase tracking-wider select-none">
+                  <tr className="border-b border-slate-800 bg-brandCard/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider select-none">
                     <th className="py-4 px-6">Meeting Details</th>
                     <th className="py-4 px-6">Scheduled Date</th>
                     <th className="py-4 px-6">Secure Link</th>
@@ -760,16 +760,16 @@ export default function MeetHub({
                 </thead>
                 <tbody className="divide-y divide-slate-850">
                   {scheduledMeetings.map(meet => (
-                    <tr key={meet.id} className="hover:bg-slate-900/20 text-xs text-slate-300 transition-all">
+                    <tr key={meet.id} className="hover:bg-brandCard/30 text-xs text-slate-300 transition-all">
                       <td className="py-4 px-6">
-                        <span className="font-bold text-slate-200 block">{meet.name}</span>
+                        <span className="font-bold text-brandText block">{meet.name}</span>
                         <span className="text-[10px] text-slate-500 block mt-0.5">{meet.description}</span>
                       </td>
                       <td className="py-4 px-6 font-mono text-[11px]">
                         {meet.date} • {meet.time}
                       </td>
                       <td className="py-4 px-6">
-                        <span className="font-mono text-indigo-400 px-2 py-0.5 bg-indigo-500/5 border border-indigo-500/10 rounded text-[10px] select-all break-all">
+                        <span className="font-mono text-brandPrimary px-2 py-0.5 bg-brandPrimary/5 border border-brandPrimary/10 rounded text-[10px] select-all break-all">
                           {meet.url || `${window.location.origin}/meet/${meet.code}`}
                         </span>
                       </td>
@@ -777,13 +777,13 @@ export default function MeetHub({
                         <div className="inline-flex items-center gap-2">
                           <button
                             onClick={() => onJoinMeeting(meet.code)}
-                            className="px-3.5 py-1.5 rounded-lg bg-emerald-650 hover:bg-emerald-500 active:scale-95 text-white font-bold text-[10px] uppercase transition-all shadow-md"
+                            className="px-3.5 py-1.5 rounded-lg bg-brandSuccess text-brandBg font-bold text-[10px] uppercase transition-all shadow-md"
                           >
                             Start
                           </button>
                           <button
                             onClick={() => copyToClipboard(meet.url || `${window.location.origin}/meet/${meet.code}`)}
-                            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 active:scale-95 transition-all flex items-center justify-center"
+                            className="p-1.5 rounded-lg bg-brandCard border border-slate-800 text-slate-400 hover:text-brandText hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center"
                             title="Copy Share Link"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
@@ -792,7 +792,7 @@ export default function MeetHub({
                           </button>
                           <button
                             onClick={() => setScheduledMeetings(scheduledMeetings.filter(m => m.id !== meet.id))}
-                            className="p-1.5 rounded-lg bg-slate-900 border border-slate-850 hover:bg-rose-500/10 text-rose-400 hover:text-rose-355 active:scale-95 transition-all flex items-center justify-center"
+                            className="p-1.5 rounded-lg bg-brandCard border border-slate-800 hover:bg-rose-500/10 text-rose-400 hover:text-rose-350 active:scale-95 transition-all flex items-center justify-center"
                             title="Delete Schedule"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
@@ -813,17 +813,17 @@ export default function MeetHub({
       {/* Schedule Modal */}
       {showScheduleModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 animate-[fadeIn_0.2s_ease-out]">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl relative animate-[scaleIn_0.18s_ease-out]">
+          <div className="bg-brandCard border border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl relative animate-[scaleIn_0.18s_ease-out]">
             <button 
               onClick={() => setShowScheduleModal(false)}
-              className="absolute top-4 right-4 text-slate-500 hover:text-slate-350"
+              className="absolute top-4 right-4 text-slate-555 hover:text-brandText"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
             </button>
 
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider select-none">Schedule Synchronization</h3>
+            <h3 className="text-sm font-bold text-brandText uppercase tracking-wider select-none">Schedule Synchronization</h3>
             
             <form onSubmit={handleScheduleMeeting} className="space-y-4">
               <div className="space-y-1.5">
@@ -833,7 +833,7 @@ export default function MeetHub({
                   value={schedName}
                   onChange={(e) => setSchedName(e.target.value)}
                   placeholder="e.g. Design Sync & Whiteboarding"
-                  className="w-full bg-slate-950 text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-slate-200 focus:border-indigo-500 focus:outline-none"
+                  className="w-full bg-brandBg text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-brandText focus:border-brandPrimary focus:outline-none"
                   required
                 />
               </div>
@@ -845,7 +845,7 @@ export default function MeetHub({
                     type="date" 
                     value={schedDate}
                     onChange={(e) => setSchedDate(e.target.value)}
-                    className="w-full bg-slate-950 text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-slate-200 focus:border-indigo-500 focus:outline-none"
+                    className="w-full bg-brandBg text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-brandText focus:border-brandPrimary focus:outline-none"
                     required
                   />
                 </div>
@@ -855,7 +855,7 @@ export default function MeetHub({
                     type="time" 
                     value={schedTime}
                     onChange={(e) => setSchedTime(e.target.value)}
-                    className="w-full bg-slate-950 text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-slate-200 focus:border-indigo-500 focus:outline-none"
+                    className="w-full bg-brandBg text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-brandText focus:border-brandPrimary focus:outline-none"
                     required
                   />
                 </div>
@@ -867,13 +867,13 @@ export default function MeetHub({
                   value={schedDesc}
                   onChange={(e) => setSchedDesc(e.target.value)}
                   placeholder="Brief agenda..."
-                  className="w-full h-20 bg-slate-950 text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-slate-200 focus:border-indigo-500 focus:outline-none resize-none"
+                  className="w-full h-20 bg-brandBg text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-brandText focus:border-brandPrimary focus:outline-none resize-none"
                 />
               </div>
 
               <button 
                 type="submit"
-                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs uppercase transition-all shadow-lg shadow-emerald-600/10"
+                className="w-full py-3 rounded-xl bg-brandSuccess hover:bg-brandSuccess/90 text-brandBg font-bold text-xs uppercase transition-all shadow-lg shadow-brandSuccess/10"
               >
                 Schedule Sync
               </button>
@@ -885,17 +885,17 @@ export default function MeetHub({
       {/* Join Modal */}
       {showJoinModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 animate-[fadeIn_0.2s_ease-out]">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative animate-[scaleIn_0.18s_ease-out]">
+          <div className="bg-brandCard border border-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative animate-[scaleIn_0.18s_ease-out]">
             <button 
               onClick={() => setShowJoinModal(false)}
-              className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
+              className="absolute top-4 right-4 text-slate-500 hover:text-brandText"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
             </button>
 
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider select-none">Join Meeting</h3>
+            <h3 className="text-sm font-bold text-brandText uppercase tracking-wider select-none">Join Meeting</h3>
             
             <form onSubmit={handleJoinByCode} className="space-y-4">
               <div className="space-y-1.5">
@@ -905,14 +905,14 @@ export default function MeetHub({
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value)}
                   placeholder="e.g. xxx-yyyy-zzz or full link"
-                  className="w-full bg-slate-950 text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-slate-200 focus:border-indigo-500 focus:outline-none"
+                  className="w-full bg-brandBg text-xs px-3.5 py-2.5 rounded-lg border border-slate-800 text-brandText focus:border-brandPrimary focus:outline-none"
                   required
                 />
               </div>
 
               <button 
                 type="submit"
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs uppercase transition-all shadow-lg shadow-indigo-600/10"
+                className="w-full py-3 rounded-xl bg-brandPrimary hover:bg-brandPrimary/90 active:scale-95 text-brandBg font-bold text-xs uppercase transition-all shadow-lg shadow-brandPrimary/10"
               >
                 Join Sync
               </button>

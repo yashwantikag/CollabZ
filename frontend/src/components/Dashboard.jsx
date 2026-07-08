@@ -519,18 +519,18 @@ export default function Dashboard() {
   const renderOverviewView = () => (
     <div className="p-8 h-full overflow-y-auto space-y-8 select-text">
       {/* Glow welcome banner */}
-      <div className="relative rounded-2xl border border-slate-800/80 bg-gradient-to-r from-indigo-950/20 via-slate-900 to-purple-950/20 p-8 overflow-hidden">
-        <div className="absolute inset-0 bg-indigo-500/5 blur-xl rounded-2xl"></div>
+      <div className="relative rounded-2xl border border-slate-800/80 bg-gradient-to-r from-brandPrimary/5 via-brandCard to-brandSuccess/5 p-8 overflow-hidden">
+        <div className="absolute inset-0 bg-brandPrimary/5 blur-xl rounded-2xl"></div>
         <div className="relative z-10">
           <h3 className="text-2xl font-extrabold text-white">Welcome back, Yashwantika</h3>
           <p className="text-slate-400 text-xs mt-2 max-w-2xl leading-relaxed">
             Access secure collaborative workspaces, whiteboards, code files, and stock analytics modules in real time from a single unified workspace.
           </p>
           <div className="mt-6 flex gap-3">
-            <button onClick={() => navigateToView('canvas')} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-lg active:scale-95">
+            <button onClick={() => navigateToView('canvas')} className="px-4 py-2 rounded-lg bg-brandPrimary hover:bg-brandPrimary/90 text-xs font-bold text-brandBg transition-all shadow-lg active:scale-95">
               Open Canvas
             </button>
-            <button onClick={() => navigateToView('meet')} className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-850 text-xs font-semibold text-slate-300 border border-slate-800 transition-all active:scale-95">
+            <button onClick={() => navigateToView('meet')} className="px-4 py-2 rounded-lg bg-brandCard hover:bg-slate-800 text-xs font-semibold text-slate-350 border border-slate-800 transition-all active:scale-95">
               Open Meet Hub
             </button>
           </div>
@@ -545,7 +545,7 @@ export default function Dashboard() {
             value: '1 Active Canvas', 
             desc: 'Real-time vector board', 
             icon: '🎨', 
-            color: 'text-indigo-400 bg-indigo-500/10',
+            color: 'text-brandPrimary bg-brandPrimary/10',
             onClick: () => navigateToView('canvas')
           },
           { 
@@ -553,7 +553,7 @@ export default function Dashboard() {
             value: 'Bypassed', 
             desc: 'Secure local verification', 
             icon: '🔑', 
-            color: 'text-emerald-400 bg-emerald-500/10',
+            color: 'text-brandSuccess bg-brandSuccess/10',
             onClick: () => setShowSyncModal(true)
           },
           { 
@@ -561,7 +561,7 @@ export default function Dashboard() {
             value: '3 Active Users', 
             desc: 'Collaborators synced', 
             icon: '👥', 
-            color: 'text-purple-400 bg-purple-500/10',
+            color: 'text-brandSuccess bg-brandSuccess/10',
             onClick: () => navigateToView('meet')
           },
           { 
@@ -569,19 +569,19 @@ export default function Dashboard() {
             value: '12ms', 
             desc: 'US-East-1 Edge location', 
             icon: '⚡', 
-            color: 'text-amber-400 bg-amber-500/10',
+            color: 'text-brandPrimary bg-brandPrimary/10',
             onClick: () => alert("Latency pinged successfully: 12ms connection stable.")
           }
         ].map((stat, idx) => (
           <div 
             key={idx} 
             onClick={stat.onClick}
-            className="p-5 rounded-2xl border border-slate-800/60 bg-slate-900/10 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:bg-[#161b26] border-slate-700/40 hover:border-slate-650 transition-all duration-200 select-none group"
+            className="p-5 rounded-2xl border border-slate-800 bg-brandCard/40 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:bg-brandCard/70 hover:border-brandPrimary/40 transition-all duration-200 select-none group"
           >
             <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1 group-hover:text-slate-400 transition-colors">{stat.title}</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1 group-hover:text-slate-450 transition-colors">{stat.title}</span>
               <span className="text-lg font-black text-white block">{stat.value}</span>
-              <span className="text-[10px] text-slate-400 block mt-1.5">{stat.desc}</span>
+              <span className="text-[10px] text-slate-450 block mt-1.5">{stat.desc}</span>
             </div>
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-transform duration-200 group-hover:scale-110 ${stat.color}`}>
               {stat.icon}
@@ -591,22 +591,22 @@ export default function Dashboard() {
       </div>
 
       {/* System Activity & Logs */}
-      <div className="p-6 rounded-2xl border border-slate-800/60 bg-slate-900/10">
+      <div className="p-6 rounded-2xl border border-slate-800 bg-brandCard/40">
         <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-5 flex items-center gap-2 select-none">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-brandPrimary animate-pulse"></span>
           System Event Feed
         </h4>
         <div className="space-y-4 font-mono">
           {[
-            { time: '13:51', user: 'System', text: 'Secure Dev-Bypass server verified on port 5000.', color: 'text-indigo-400' },
-            { time: '13:50', user: 'Alex Rivera', text: 'Created drawings on vector whiteboard.', color: 'text-emerald-400' },
-            { time: '13:42', user: 'Sarah Jenkins', text: 'Joined general workspace conference call.', color: 'text-pink-400' },
-            { time: '13:19', user: 'You', text: 'OTP authentication bypassed successfully.', color: 'text-indigo-400' }
+            { time: '13:51', user: 'System', text: 'Secure Dev-Bypass server verified on port 5000.', color: 'text-brandPrimary' },
+            { time: '13:50', user: 'Alex Rivera', text: 'Created drawings on vector whiteboard.', color: 'text-brandSuccess' },
+            { time: '13:42', user: 'Sarah Jenkins', text: 'Joined general workspace conference call.', color: 'text-brandSuccess' },
+            { time: '13:19', user: 'You', text: 'OTP authentication bypassed successfully.', color: 'text-brandPrimary' }
           ].map((log, idx) => (
             <div key={idx} className="flex items-start gap-4 text-xs">
               <span className="text-slate-500 text-[10px] w-14 flex-shrink-0">{log.time}</span>
               <span className={`font-bold flex-shrink-0 text-[10px] ${log.color}`}>{log.user}</span>
-              <span className="text-slate-400 text-[11px]">{log.text}</span>
+              <span className="text-slate-450 text-[11px]">{log.text}</span>
             </div>
           ))}
         </div>
@@ -1173,28 +1173,28 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
+    <div className="flex h-screen w-screen bg-brandBg text-brandText overflow-hidden font-sans select-none">
       
       {/* --- Left Sidebar Navigation --- */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col flex-shrink-0 z-20">
+      <aside className="w-64 bg-brandCard border-r border-slate-800 flex flex-col flex-shrink-0 z-20">
         {/* App Logo & Header */}
         <div className="h-16 px-6 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-brandPrimary/10 border border-brandPrimary/20 flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none" className="w-5 h-5">
               <defs>
                 <linearGradient id="sidebarLogoGrad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#4f46e5" />
-                  <stop offset="100%" stopColor="#0284c7" />
+                  <stop offset="0%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#059669" />
                 </linearGradient>
               </defs>
               <path d="M12 20a8 8 0 1016 0 8 8 0 10-16 0" stroke="url(#sidebarLogoGrad)" strokeWidth="3.5" />
               <path d="M20 12a8 8 0 100 16 8 8 0 100-16" stroke="url(#sidebarLogoGrad)" strokeWidth="3.5" opacity="0.85" />
-              <circle cx="20" cy="20" r="3.5" fill="#4f46e5" />
+              <circle cx="20" cy="20" r="3.5" fill="#10b981" />
             </svg>
           </div>
           <div>
             <h1 className="text-sm font-extrabold tracking-tight text-white">
-              Collab<span className="text-indigo-500">Z</span>
+              Collab<span className="text-brandPrimary">Z</span>
             </h1>
             <p className="text-[10px] text-slate-500 font-medium">Enterprise Suite</p>
           </div>
@@ -1240,14 +1240,14 @@ export default function Dashboard() {
               onClick={() => navigateToView(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl transition-all relative ${
                 currentView === item.id 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/15' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  ? 'bg-brandPrimary text-brandBg shadow-lg shadow-brandPrimary/15' 
+                  : 'text-slate-400 hover:text-brandText hover:bg-slate-850'
               }`}
             >
               {item.icon}
               {item.label}
               {currentView === item.id && (
-                <span className="absolute right-3 w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                <span className="absolute right-3 w-1.5 h-1.5 rounded-full bg-brandBg animate-pulse"></span>
               )}
             </button>
           ))}
@@ -1255,7 +1255,7 @@ export default function Dashboard() {
 
         {/* User Card at Sidebar Bottom */}
         <div className="p-4 border-t border-slate-800 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-505 to-purple-505 border border-indigo-400/20 flex items-center justify-center font-extrabold text-sm text-white select-none">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brandPrimary to-brandSuccess border border-brandPrimary/20 flex items-center justify-center font-extrabold text-sm text-brandBg select-none">
             Y
           </div>
           <div className="overflow-hidden">
@@ -1266,10 +1266,10 @@ export default function Dashboard() {
       </aside>
 
       {/* --- Dynamic Content Area (Right-hand Side) --- */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0b0f19]">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden bg-brandBg">
         
         {/* Top Header */}
-        <header className="h-16 border-b border-slate-800/80 bg-slate-900/10 px-6 flex items-center justify-between flex-shrink-0 relative">
+        <header className="h-16 border-b border-slate-800/80 bg-brandCard/40 px-6 flex items-center justify-between flex-shrink-0 relative">
           <div className="flex items-center gap-3 select-none">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
               {currentView === 'overview' && 'Workspace Overview'}
@@ -1280,8 +1280,8 @@ export default function Dashboard() {
               {currentView === 'contacts' && 'Contacts Directory'}
             </h2>
             {currentView === 'canvas' && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center gap-1 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block"></span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-brandPrimary/10 text-brandPrimary border border-brandPrimary/20 flex items-center gap-1 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-brandPrimary inline-block"></span>
                 LIVE SYNC
               </span>
             )}
