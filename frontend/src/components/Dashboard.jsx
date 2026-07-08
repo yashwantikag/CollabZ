@@ -899,6 +899,8 @@ export default function Dashboard() {
     return (
       <MeetHub
         roomID={activeRoomId}
+        localStream={localStream}
+        peerConnection={pcRef.current}
         meetingLinks={meetingLinks}
         setMeetingLinks={setMeetingLinks}
         scheduledMeetings={scheduledMeetings}

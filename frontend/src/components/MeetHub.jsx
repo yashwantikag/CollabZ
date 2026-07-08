@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Whiteboard from './Whiteboard'
 import FileShare from './FileShare'
 
 export default function MeetHub({ 
   roomID, // activeRoomId from Dashboard
+  localStream,
+  peerConnection,
   meetingLinks = [], 
   setMeetingLinks, 
   scheduledMeetings = [], 
@@ -126,6 +128,106 @@ export default function MeetHub({
     alert(`Copied secure link: ${text}`)
   }
 
+  // Local video DOM element reference
+  const localVideoElRef = useRef(null)
+  
+  // Refs to avoid stale closures in event callbacks
+  const localStreamPropsRef = useRef(localStream)
+  const peerConnectionPropsRef = useRef(peerConnection)
+  const screenTrackRef = useRef(null)
+
+  useEffect(() => {
+    localStreamPropsRef.current = localStream
+  }, [localStream])
+
+  useEffect(() => {
+    peerConnectionPropsRef.current = peerConnection
+  }, [peerConnection])
+
+  // Clean up screen share track on unmount
+  useEffect(() => {
+    return () => {
+      if (screenTrackRef.current) {
+        screenTrackRef.current.stop()
+      }
+    }
+  }, [])
+
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
+
+  const startScreenShare = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true })
+      const track = stream.getVideoTracks()[0]
+      screenTrackRef.current = track
+
+      // Handle native browser "Stop Sharing" button click
+      track.onended = () => {
+        stopScreenShare()
+      }
+
+      // Replace track on RTCPeerConnection sender
+      const pc = peerConnectionPropsRef.current
+      if (pc) {
+        const senders = pc.getSenders()
+        const videoSender = senders.find(s => s.track && s.track.kind === 'video')
+        if (videoSender) {
+          await videoSender.replaceTrack(track)
+          console.log("[ScreenShare] Replaced webcam track with screen track on peer connection")
+        }
+      }
+
+      // Update local preview DOM element
+      if (localVideoElRef.current) {
+        localVideoElRef.current.srcObject = stream
+      }
+
+      setIsScreenSharing(true)
+    } catch (err) {
+      console.error("[ScreenShare] Failed to start screen share:", err)
+    }
+  }
+
+  const stopScreenShare = async () => {
+    if (screenTrackRef.current) {
+      screenTrackRef.current.stop()
+      screenTrackRef.current = null
+    }
+
+    const pc = peerConnectionPropsRef.current
+    const localStreamObj = localStreamPropsRef.current
+    const webcamTrack = localStreamObj ? localStreamObj.getVideoTracks()[0] : null
+
+    // Restore webcam track on RTCPeerConnection sender
+    if (pc && webcamTrack) {
+      const senders = pc.getSenders()
+      const videoSender = senders.find(s => s.track && s.track.kind === 'video')
+      if (videoSender) {
+        try {
+          await videoSender.replaceTrack(webcamTrack)
+          console.log("[ScreenShare] Replaced screen track back with webcam track on peer connection")
+        } catch (err) {
+          console.error("[ScreenShare] Failed to restore webcam track on peer connection:", err)
+        }
+      }
+    }
+
+    // Restore local video preview element
+    if (localVideoElRef.current && localStreamObj) {
+      localVideoElRef.current.srcObject = localStreamObj
+    }
+
+    setIsScreenSharing(false)
+  }
+
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      await stopScreenShare()
+    } else {
+      await startScreenShare()
+    }
+  }
+
   // Copy Active Room Invite Link
   const handleCopyInvite = () => {
     const professionalMeetingLink = `${window.location.origin}/meet/${roomID}`;
@@ -217,7 +319,10 @@ export default function MeetHub({
                       <div className="lg:col-span-1 grid grid-cols-2 lg:grid-cols-1 gap-4 overflow-y-auto pr-1">
                         <div className="rounded-xl border border-slate-850 bg-slate-950 overflow-hidden relative flex flex-col justify-center items-center min-h-[120px] max-h-[180px]">
                           <video
-                            ref={localVideoRef}
+                            ref={(el) => {
+                              if (localVideoRef) localVideoRef(el);
+                              localVideoElRef.current = el;
+                            }}
                             muted
                             autoPlay
                             playsInline
@@ -305,7 +410,10 @@ export default function MeetHub({
                         {/* Small floating corner tile for local participant */}
                         <div className="absolute bottom-4 right-4 w-40 h-28 sm:w-48 sm:h-36 rounded-xl border border-slate-800 bg-slate-950 shadow-2xl overflow-hidden z-20 transition-all duration-300 hover:scale-105">
                           <video
-                            ref={localVideoRef}
+                            ref={(el) => {
+                              if (localVideoRef) localVideoRef(el);
+                              localVideoElRef.current = el;
+                            }}
                             muted
                             autoPlay
                             playsInline
@@ -408,6 +516,20 @@ export default function MeetHub({
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                </svg>
+              </button>
+
+              <button
+                onClick={toggleScreenShare}
+                className={`p-3.5 rounded-xl border transition-all active:scale-95 shadow-md ${
+                  isScreenSharing 
+                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/10' 
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                }`}
+                title={isScreenSharing ? 'Stop Screen Sharing' : 'Share Screen'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
                 </svg>
               </button>
 
