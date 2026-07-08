@@ -1,48 +1,212 @@
 import { useState, useEffect, useRef } from 'react'
-import { encryptData } from '../utils/cryptoHelper'
+import { io } from 'socket.io-client'
+import { encryptData, decryptData } from '../utils/cryptoHelper'
+import AppLogo from '../public/favicon.png'
 
-const SECRET_KEY = 'default-fallback-key-32chars-for-aes';
+const SECRET_KEY = import.meta.env.VITE_SOCKET_ENCRYPTION_KEY || 'default-fallback-key-32chars-for-aes';
 
-export default function AuthPage({ socket, onNavigate, onLoginSuccess }) {
+export default function AuthPage({ onAuthSuccess, onBack }) {
+  const [step, setStep] = useState('email') // 'email' or 'code'
   const [email, setEmail] = useState('')
   const [code, setCode] = useState(['', '', '', '', '', ''])
-  const [step, setStep] = useState('email') // 'email' or 'otp'
-  const [isLoading, setIsLoading] = useState(false)
+  const [timer, setTimer] = useState(0)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
-  const [timer, setTimer] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const socketRef = useRef(socket)
-  const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)]
+  const socketRef = useRef(null)
 
+  // Refs for the 6 OTP input boxes
+  const inputRefs = [
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null)
+  ]
+
+  // Setup Socket.io connection on component mount
   useEffect(() => {
-    socketRef.current = socket
-  }, [socket])
+    // Connect to the backend socket server on port 5000
+    socketRef.current = io('http://localhost:5000')
 
-  // Count down resend timer
+    socketRef.current.on('connect', () => {
+      console.log('[Auth] Connected to socket server successfully')
+    })
+
+    socketRef.current.on('otp-sent', async (encryptedData) => {
+      try {
+        const decryptedString = await decryptData(encryptedData, SECRET_KEY);
+        const data = JSON.parse(decryptedString);
+        setIsLoading(false)
+        setSuccessMessage(data?.message || 'Verification code dispatched successfully.')
+        setError('')
+        setTimer(60)
+        setStep('code')
+      } catch (err) {
+        console.error('[Auth] Decryption failed for otp-sent:', err);
+        setIsLoading(false);
+        setError('Security handshake failed.');
+      }
+    })
+
+    socketRef.current.on('otp-error', async (encryptedData) => {
+      try {
+        const decryptedString = await decryptData(encryptedData, SECRET_KEY);
+        const data = JSON.parse(decryptedString);
+        setIsLoading(false)
+        const errMsg = typeof data === 'string' ? data : (data?.message || 'An error occurred. Please try again.');
+        setError(errMsg)
+        setSuccessMessage('')
+      } catch (err) {
+        console.error('[Auth] Decryption failed for otp-error:', err);
+        setIsLoading(false);
+        setError('Security handshake failed.');
+      }
+    })
+
+    socketRef.current.on('auth-success', async (encryptedData) => {
+      try {
+        const decryptedString = await decryptData(encryptedData, SECRET_KEY);
+        const data = JSON.parse(decryptedString);
+        setIsLoading(false)
+        setError('')
+        setSuccessMessage(data?.message || 'Workspace unlocked! Redirecting...')
+        // Wait briefly for user feedback before transition
+        setTimeout(() => {
+          onAuthSuccess()
+        }, 1000)
+      } catch (err) {
+        console.error('[Auth] Decryption failed for auth-success:', err);
+        setIsLoading(false);
+        setError('Security handshake failed.');
+      }
+    })
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+      }
+    }
+  }, [onAuthSuccess])
+
+  // Timer effect for resending code
   useEffect(() => {
-    if (timer <= 0) return
-    const interval = setInterval(() => {
-      setTimer(prev => prev - 1)
-    }, 1000)
-    return () => clearInterval(interval)
+    let interval = null
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1)
+      }, 1000)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
   }, [timer])
 
-  // Focus management helper for OTP inputs
-  const handleCodeChange = (index, val) => {
-    const cleanVal = val.replace(/[^0-9]/g, '')
-    const newCode = [...code]
-    newCode[index] = cleanVal
-    setCode(newCode)
+  // Automatically focus the first input box when step transitions to 'code'
+  useEffect(() => {
+    if (step === 'code' && inputRefs[0].current) {
+      inputRefs[0].current.focus()
+    }
+  }, [step])
 
-    if (cleanVal !== '' && index < 5) {
+  const handleBack = (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    if (onBack) onBack()
+  }
+
+  const handleBackToEmail = () => {
+    setStep('email')
+    setError('')
+    setSuccessMessage('')
+    setCode(['', '', '', '', '', ''])
+  }
+
+  const handleSendCode = async (e) => {
+    e.preventDefault()
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!email.trim() || !emailRegex.test(email)) {
+      setError('Please enter a valid organization email address.')
+      return
+    }
+
+    setError('')
+    setSuccessMessage('Generating security code...')
+    setIsLoading(true)
+
+    // Emit send-otp event to the backend socket
+    if (socketRef.current) {
+      try {
+        const encrypted = await encryptData(JSON.stringify({ email: email.trim() }), SECRET_KEY);
+        socketRef.current.emit('send-otp', encrypted)
+      } catch (err) {
+        console.error('[Auth] Encryption failed:', err);
+        setError('Failed to encrypt authentication request.');
+        setIsLoading(false);
+      }
+    }
+  }
+
+  const handleVerify = async (e) => {
+    e.preventDefault()
+    const enteredCode = code.join('')
+    
+    if (enteredCode.length < 6) {
+      setError('Please enter the complete 6-digit verification code.')
+      return
+    }
+
+    setError('')
+    setIsLoading(true)
+
+    // Emit verify-otp event to the backend socket
+    if (socketRef.current) {
+      try {
+        const encrypted = await encryptData(JSON.stringify({ 
+          email: email.trim(), 
+          otp: enteredCode 
+        }), SECRET_KEY);
+        socketRef.current.emit('verify-otp', encrypted)
+      } catch (err) {
+        console.error('[Auth] Encryption failed:', err);
+        setError('Failed to encrypt verification request.');
+        setIsLoading(false);
+      }
+    }
+  }
+
+  const handleCodeChange = (index, value) => {
+    // Only allow digits
+    if (value && !/^\d$/.test(value)) return
+
+    const newCode = [...code]
+    newCode[index] = value
+    setCode(newCode)
+    setError('')
+
+    // Focus next input box if digit is entered
+    if (value && index < 5) {
       inputRefs[index + 1].current.focus()
     }
   }
 
   const handleKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && code[index] === '' && index > 0) {
-      inputRefs[index - 1].current.focus()
+    if (e.key === 'Backspace') {
+      // If current input is empty, clear the previous one and focus it
+      if (!code[index] && index > 0) {
+        const newCode = [...code]
+        newCode[index - 1] = ''
+        setCode(newCode)
+        inputRefs[index - 1].current.focus()
+      } else {
+        const newCode = [...code]
+        newCode[index] = ''
+        setCode(newCode)
+      }
     }
   }
 
@@ -56,101 +220,6 @@ export default function AuthPage({ socket, onNavigate, onLoginSuccess }) {
     inputRefs[5].current.focus()
   }
 
-  // Handle flow navigation
-  const handleBack = () => {
-    onNavigate('landing')
-  }
-
-  const handleBackToEmail = () => {
-    setStep('email')
-    setError('')
-    setSuccessMessage('')
-  }
-
-  // Socket action listeners
-  useEffect(() => {
-    const currentSocket = socketRef.current
-    if (!currentSocket) return
-
-    const handleOtpSent = (response) => {
-      setIsLoading(false)
-      if (response.success) {
-        setStep('otp')
-        setSuccessMessage('Verification code dispatched successfully.')
-        setTimer(60)
-        setError('')
-      } else {
-        setError(response.message || 'Verification delivery failed.')
-      }
-    }
-
-    const handleOtpVerified = (response) => {
-      setIsLoading(false)
-      if (response.success) {
-        setSuccessMessage('Authentication verified. Provisioning session...')
-        setTimeout(() => {
-          onLoginSuccess(response.userName || 'Collaborator')
-        }, 1000)
-      } else {
-        setError(response.message || 'The verification code is incorrect or expired.')
-      }
-    }
-
-    currentSocket.on('otp-sent', handleOtpSent)
-    currentSocket.on('otp-verified', handleOtpVerified)
-
-    return () => {
-      currentSocket.off('otp-sent', handleOtpSent)
-      currentSocket.off('otp-verified', handleOtpVerified)
-    }
-  }, [onLoginSuccess])
-
-  // Actions
-  const handleSendCode = async (e) => {
-    if (e) e.preventDefault()
-    if (!email.trim()) return
-
-    setError('')
-    setSuccessMessage('')
-    setIsLoading(true)
-
-    if (socketRef.current) {
-      try {
-        const encrypted = await encryptData(JSON.stringify({ email: email.trim() }), SECRET_KEY);
-        socketRef.current.emit('send-otp', encrypted)
-      } catch (err) {
-        console.error('Encryption failed:', err);
-        setError('Failed to encrypt authentication request.');
-        setIsLoading(false);
-      }
-    }
-  }
-
-  const handleVerify = async (e) => {
-    if (e) e.preventDefault()
-    const otpValue = code.join('')
-    if (otpValue.length !== 6) {
-      setError('Please input the complete 6-digit code.')
-      return
-    }
-
-    setError('')
-    setSuccessMessage('')
-    setIsLoading(true)
-
-    if (socketRef.current) {
-      try {
-        const payload = { email: email.trim(), code: otpValue };
-        const encrypted = await encryptData(JSON.stringify(payload), SECRET_KEY);
-        socketRef.current.emit('verify-otp', encrypted)
-      } catch (err) {
-        console.error('Encryption failed:', err);
-        setError('Failed to encrypt verification request.');
-        setIsLoading(false);
-      }
-    }
-  }
-
   const handleResend = async () => {
     setError('')
     setSuccessMessage('Resending verification code...')
@@ -161,7 +230,7 @@ export default function AuthPage({ socket, onNavigate, onLoginSuccess }) {
         const encrypted = await encryptData(JSON.stringify({ email: email.trim() }), SECRET_KEY);
         socketRef.current.emit('send-otp', encrypted)
       } catch (err) {
-        console.error('Encryption failed:', err);
+        console.error('[Auth] Encryption failed:', err);
         setError('Failed to encrypt authentication request.');
         setIsLoading(false);
       }
@@ -176,7 +245,7 @@ export default function AuthPage({ socket, onNavigate, onLoginSuccess }) {
       <button
         type="button"
         onClick={handleBack}
-        className="absolute top-6 left-6 z-30 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brandCard hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white transition-all backdrop-blur-sm shadow-lg active:scale-95"
+        className="absolute top-6 left-6 z-30 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brandCard hover:bg-slate-800 border border-slate-850 text-xs font-semibold text-slate-300 hover:text-white transition-all backdrop-blur-sm shadow-lg active:scale-95"
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
@@ -191,22 +260,8 @@ export default function AuthPage({ socket, onNavigate, onLoginSuccess }) {
         <div className="absolute bottom-1/4 left-0 w-80 h-80 bg-brandSuccess/10 rounded-full blur-3xl"></div>
 
         {/* Top Header Logo */}
-        <div className="flex items-center gap-2.5 z-10 font-sans mt-12 select-none">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40" fill="none" className="flex-shrink-0">
-            <defs>
-              <linearGradient id="collabzAuthGrad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#10b981" />
-                <stop offset="100%" stopColor="#059669" />
-              </linearGradient>
-            </defs>
-            <path d="M12 20a8 8 0 1016 0 8 8 0 10-16 0" stroke="url(#collabzAuthGrad)" strokeWidth="3.5" strokeLinecap="round" />
-            <path d="M20 12a8 8 0 100 16 8 8 0 100-16" stroke="url(#collabzAuthGrad)" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" />
-            <circle cx="20" cy="20" r="3.5" fill="#10b981" />
-          </svg>
-          <span className="text-xl font-bold tracking-tight text-white select-none">
-            <span className="text-white font-extrabold">Collab</span>
-            <span className="text-brandPrimary font-black">Z</span>
-          </span>
+        <div className="flex items-center select-none mt-12 z-10">
+          <img src={AppLogo} alt="CollabZ Logo" className="h-12 w-auto object-contain" />
         </div>
 
         {/* Center Welcome Messages */}
@@ -220,15 +275,15 @@ export default function AuthPage({ socket, onNavigate, onLoginSuccess }) {
 
           {/* Feature highlights inside left column */}
           <div className="space-y-3 pt-6 border-t border-slate-800/80">
-            <div className="flex items-center gap-3 text-xs text-slate-300">
+            <div className="flex items-center gap-3 text-xs text-slate-350">
               <span className="p-1 rounded bg-brandPrimary/10 text-brandPrimary border border-brandPrimary/20">✓</span>
               <span>Ultra-low latency drawing synchronization</span>
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-300">
+            <div className="flex items-center gap-3 text-xs text-slate-350">
               <span className="p-1 rounded bg-brandPrimary/10 text-brandPrimary border border-brandPrimary/20">✓</span>
               <span>Multi-party high-definition audio/video calls</span>
             </div>
-            <div className="flex items-center gap-3 text-xs text-slate-300">
+            <div className="flex items-center gap-3 text-xs text-slate-355">
               <span className="p-1 rounded bg-brandPrimary/10 text-brandPrimary border border-brandPrimary/20">✓</span>
               <span>Robust SOC2 enterprise identity shielding</span>
             </div>
@@ -245,22 +300,8 @@ export default function AuthPage({ socket, onNavigate, onLoginSuccess }) {
       <section className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 relative bg-brandBg">
         
         {/* Mobile Header (Shown on small viewports) */}
-        <div className="flex items-center justify-start lg:hidden mb-8 mt-12 select-none gap-2.5">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="32" height="32" fill="none" className="flex-shrink-0">
-            <defs>
-              <linearGradient id="collabzAuthMobGrad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#10b981" />
-                <stop offset="100%" stopColor="#059669" />
-              </linearGradient>
-            </defs>
-            <path d="M12 20a8 8 0 1016 0 8 8 0 10-16 0" stroke="url(#collabzAuthMobGrad)" strokeWidth="3.5" strokeLinecap="round" />
-            <path d="M20 12a8 8 0 100 16 8 8 0 100-16" stroke="url(#collabzAuthMobGrad)" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" />
-            <circle cx="20" cy="20" r="3.5" fill="#10b981" />
-          </svg>
-          <span className="text-lg font-bold text-white select-none">
-            <span className="text-white font-extrabold">Collab</span>
-            <span className="text-brandPrimary font-black">Z</span>
-          </span>
+        <div className="flex items-center justify-start lg:hidden mb-8 mt-12 select-none">
+          <img src={AppLogo} alt="CollabZ Logo" className="h-10 w-auto object-contain" />
         </div>
 
         <div className="max-w-md w-full mx-auto space-y-8 animate-[fadeIn_0.2s_ease-out]">

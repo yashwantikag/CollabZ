@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import AppLogo from '../public/favicon.png'
 
 export default function LandingPage({ onNavigate }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -13,23 +14,9 @@ export default function LandingPage({ onNavigate }) {
       <header className="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-brandBg/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           
-          {/* Brand Logo with Professional SVG Icon */}
-          <div className="flex items-center gap-2.5 select-none">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40" fill="none" className="flex-shrink-0">
-              <defs>
-                <linearGradient id="collabzLogoGrad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#059669" />
-                </linearGradient>
-              </defs>
-              <path d="M12 20a8 8 0 1016 0 8 8 0 10-16 0" stroke="url(#collabzLogoGrad)" strokeWidth="3.5" strokeLinecap="round" />
-              <path d="M20 12a8 8 0 100 16 8 8 0 100-16" stroke="url(#collabzLogoGrad)" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" />
-              <circle cx="20" cy="20" r="3.5" fill="#10b981" />
-            </svg>
-            <span className="text-xl tracking-tight font-sans select-none">
-              <span className="text-white font-extrabold">Collab</span>
-              <span className="text-brandPrimary font-black">Z</span>
-            </span>
+          {/* Brand Logo responsive image asset */}
+          <div className="flex items-center select-none">
+            <img src={AppLogo} alt="CollabZ Logo" className="h-10 w-auto object-contain" />
           </div>
 
           {/* Desktop Navigation Links */}

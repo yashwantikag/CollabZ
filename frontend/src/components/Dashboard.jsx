@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import CryptoJS from 'crypto-js'
 import { io } from 'socket.io-client'
 import { encryptData, decryptData } from '../utils/cryptoHelper'
+import AppLogo from '../public/favicon.png'
 import MeetHub from './MeetHub'
 import Whiteboard from './Whiteboard'
 import FileShare from './FileShare'
@@ -1178,26 +1179,8 @@ export default function Dashboard() {
       {/* --- Left Sidebar Navigation --- */}
       <aside className="w-64 bg-brandCard border-r border-slate-800 flex flex-col flex-shrink-0 z-20">
         {/* App Logo & Header */}
-        <div className="h-16 px-6 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-brandPrimary/10 border border-brandPrimary/20 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none" className="w-5 h-5">
-              <defs>
-                <linearGradient id="sidebarLogoGrad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#059669" />
-                </linearGradient>
-              </defs>
-              <path d="M12 20a8 8 0 1016 0 8 8 0 10-16 0" stroke="url(#sidebarLogoGrad)" strokeWidth="3.5" />
-              <path d="M20 12a8 8 0 100 16 8 8 0 100-16" stroke="url(#sidebarLogoGrad)" strokeWidth="3.5" opacity="0.85" />
-              <circle cx="20" cy="20" r="3.5" fill="#10b981" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-sm font-extrabold tracking-tight text-white">
-              Collab<span className="text-brandPrimary">Z</span>
-            </h1>
-            <p className="text-[10px] text-slate-500 font-medium">Enterprise Suite</p>
-          </div>
+        <div className="h-16 px-6 border-b border-slate-800 flex items-center select-none">
+          <img src={AppLogo} alt="CollabZ Logo" className="h-10 w-auto object-contain" />
         </div>
 
         {/* Vertical Navigation Links */}
