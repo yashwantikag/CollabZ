@@ -178,7 +178,8 @@ export default function Dashboard() {
 
   // Setup Socket.io connection for real-time encrypted communication
   useEffect(() => {
-    socketRef.current = io('http://localhost:5000')
+    const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    socketRef.current = io(BACKEND_URL)
 
     socketRef.current.on('connect', () => {
       console.log('Dashboard connected to socket server')

@@ -28,8 +28,9 @@ export default function AuthPage({ onAuthSuccess, onBack }) {
 
   // Setup Socket.io connection on component mount
   useEffect(() => {
-    // Connect to the backend socket server on port 5000
-    socketRef.current = io('http://localhost:5000')
+    // Connect to the backend socket server
+    const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    socketRef.current = io(BACKEND_URL)
 
     socketRef.current.on('connect', () => {
       console.log('[Auth] Connected to socket server successfully')
