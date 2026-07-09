@@ -29,7 +29,7 @@ export default function AuthPage({ onAuthSuccess, onBack }) {
   // Setup Socket.io connection on component mount
   useEffect(() => {
     // Connect to the backend socket server
-    const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    const BACKEND_URL = import.meta.env.VITE_API_URL || 'https://collabz-3q5l.onrender.com';
     socketRef.current = io(BACKEND_URL)
 
     socketRef.current.on('connect', () => {
@@ -44,13 +44,9 @@ export default function AuthPage({ onAuthSuccess, onBack }) {
         setSuccessMessage(data?.message || 'Verification code dispatched!')
         setError('')
         setTimer(60)
-
-        // --- MOBILE KEYBOARD FOCUS RELEASE FIX ---
         if (document.activeElement) {
           document.activeElement.blur();
         }
-        // -----------------------------------------
-
         setStep('code')
       } catch (err) {
         console.error('[Auth] Decryption failed for otp-sent:', err);
