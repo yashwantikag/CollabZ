@@ -386,67 +386,25 @@ export default function Dashboard() {
       console.error("[WebRTC] Failed to initialize RTCPeerConnection:", err)
     }
   }, [])
-
   const startLocalVideo = useCallback(async () => {
     try {
-      console.log("[Meet] Initializing media stream capture...")
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      setLocalStream(stream)
-      initWebRTC(stream)
-      return stream
+      console.log("[Meet] Initializing media stream capture...");
+      const constraints = {
+        audio: true,
+        video: {
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      setLocalStream(stream);
+      initWebRTC(stream);
+      return stream;
     } catch (err) {
-      console.error("[Meet] Media access permission error:", err)
+      console.error("[Meet] Media access permission error:", err);
     }
-  }, [initWebRTC])
-
-  // Callback refs to safely bind streams to HTML <video> elements
-  const setLocalVideoEl = useCallback((el) => {
-    localVideoRef.current = el
-    if (el) {
-      el.srcObject = localStream
-    }
-  }, [localStream])
-
-  const setRemoteVideoEl = useCallback((el) => {
-    remoteVideoRef.current = el
-    if (el) {
-      el.srcObject = remoteStream
-    }
-  }, [remoteStream])
-
-  // Keep audio track states in sync with isMuted state
-  useEffect(() => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0]
-      if (audioTrack) {
-        audioTrack.enabled = !isMuted
-      }
-    }
-  }, [isMuted, localStream])
-
-  // Keep video track states in sync with isVideoOn state
-  useEffect(() => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0]
-      if (videoTrack) {
-        videoTrack.enabled = isVideoOn
-      }
-    }
-  }, [isVideoOn, localStream])
-
-  // Release camera & microphone on unmount
-  useEffect(() => {
-    return () => {
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop())
-      }
-      if (pcRef.current) {
-        pcRef.current.close()
-      }
-    }
-  }, [])
-
-  // --- Meet Module Handlers ---
+  }, [initWebRTC]);
   const handleJoinMeeting = async (roomId) => {
     setActiveRoomId(roomId)
     setIsInCall(true)
@@ -780,8 +738,8 @@ export default function Dashboard() {
               key={chan}
               onClick={() => setSelectedChannel(chan)}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all ${selectedChannel === chan
-                  ? 'bg-slate-900 text-white border border-slate-800'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
+                ? 'bg-slate-900 text-white border border-slate-800'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
                 }`}
             >
               <span>{chan}</span>
@@ -809,8 +767,8 @@ export default function Dashboard() {
                     <span className="text-[9px] text-slate-500 font-mono">{msg.time}</span>
                   </div>
                   <div className={`p-3 rounded-xl text-xs leading-relaxed break-words border ${msg.self
-                      ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none'
-                      : 'bg-slate-900 text-slate-300 border-slate-800 rounded-tl-none'
+                    ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none'
+                    : 'bg-slate-900 text-slate-300 border-slate-800 rounded-tl-none'
                     }`}>
                     {msg.text}
                   </div>
@@ -944,8 +902,8 @@ export default function Dashboard() {
               key={f}
               onClick={() => setEditorFile(f)}
               className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${editorFile === f
-                  ? 'bg-slate-800 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-slate-800 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
                 }`}
             >
               {f}
@@ -1031,8 +989,8 @@ export default function Dashboard() {
                 key={symbol}
                 onClick={() => setTradingAsset(symbol)}
                 className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${tradingAsset === symbol
-                    ? 'bg-slate-850 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-slate-850 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
                   }`}
               >
                 {symbol}
@@ -1231,8 +1189,8 @@ export default function Dashboard() {
               key={item.id}
               onClick={() => navigateToView(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl transition-all relative ${currentView === item.id
-                  ? 'bg-brandPrimary text-brandBg shadow-lg shadow-brandPrimary/15'
-                  : 'text-slate-400 hover:text-brandText hover:bg-slate-850'
+                ? 'bg-brandPrimary text-brandBg shadow-lg shadow-brandPrimary/15'
+                : 'text-slate-400 hover:text-brandText hover:bg-slate-850'
                 }`}
             >
               {item.icon}
