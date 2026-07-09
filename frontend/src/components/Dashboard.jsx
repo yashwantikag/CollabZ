@@ -451,10 +451,10 @@ export default function Dashboard() {
     setActiveRoomId(roomId)
     setIsInCall(true)
     navigateToView('meet')
-    
+
     // 1. Capture local media and configure RTCPeerConnection FIRST
     await startLocalVideo()
-    
+
     // 2. Only emit join events after signaling state and local tracks are ready
     if (socketRef.current) {
       socketRef.current.emit('join-meeting', { roomId, userName: 'Yashwantika G.' })
@@ -542,41 +542,41 @@ export default function Dashboard() {
       {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { 
-            title: 'Drawing Board', 
-            value: '1 Active Canvas', 
-            desc: 'Real-time vector board', 
-            icon: '🎨', 
+          {
+            title: 'Drawing Board',
+            value: '1 Active Canvas',
+            desc: 'Real-time vector board',
+            icon: '🎨',
             color: 'text-brandPrimary bg-brandPrimary/10',
             onClick: () => navigateToView('canvas')
           },
-          { 
-            title: 'Sync Status', 
-            value: 'Bypassed', 
-            desc: 'Secure local verification', 
-            icon: '🔑', 
+          {
+            title: 'Sync Status',
+            value: 'Bypassed',
+            desc: 'Secure local verification',
+            icon: '🔑',
             color: 'text-brandSuccess bg-brandSuccess/10',
             onClick: () => setShowSyncModal(true)
           },
-          { 
-            title: 'Connections', 
-            value: '3 Active Users', 
-            desc: 'Collaborators synced', 
-            icon: '👥', 
+          {
+            title: 'Connections',
+            value: '3 Active Users',
+            desc: 'Collaborators synced',
+            icon: '👥',
             color: 'text-brandSuccess bg-brandSuccess/10',
             onClick: () => navigateToView('meet')
           },
-          { 
-            title: 'Server Latency', 
-            value: '12ms', 
-            desc: 'US-East-1 Edge location', 
-            icon: '⚡', 
+          {
+            title: 'Server Latency',
+            value: '12ms',
+            desc: 'US-East-1 Edge location',
+            icon: '⚡',
             color: 'text-brandPrimary bg-brandPrimary/10',
             onClick: () => alert("Latency pinged successfully: 12ms connection stable.")
           }
         ].map((stat, idx) => (
-          <div 
-            key={idx} 
+          <div
+            key={idx}
             onClick={stat.onClick}
             className="p-5 rounded-2xl border border-slate-800 bg-brandCard/40 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:bg-brandCard/70 hover:border-brandPrimary/40 transition-all duration-200 select-none group"
           >
@@ -618,7 +618,7 @@ export default function Dashboard() {
       {showSyncModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 animate-[fadeIn_0.2s_ease-out]">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl relative animate-[scaleIn_0.18s_ease-out]">
-            <button 
+            <button
               onClick={() => setShowSyncModal(false)}
               className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
             >
@@ -640,7 +640,7 @@ export default function Dashboard() {
               <p>LOCAL CACHE: <span className="text-indigo-400 font-bold">In-Memory Transient Buffer</span></p>
               <p>AUTH MODE: <span className="text-slate-350">Local verification mock bypassed.</span></p>
             </div>
-            
+
             <button
               onClick={() => setShowSyncModal(false)}
               className="w-full py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 text-xs font-bold uppercase rounded-xl transition-all border border-slate-800"
@@ -779,11 +779,10 @@ export default function Dashboard() {
             <button
               key={chan}
               onClick={() => setSelectedChannel(chan)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all ${
-                selectedChannel === chan 
-                  ? 'bg-slate-900 text-white border border-slate-800' 
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold rounded-xl transition-all ${selectedChannel === chan
+                  ? 'bg-slate-900 text-white border border-slate-800'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
-              }`}
+                }`}
             >
               <span>{chan}</span>
               {chan === '#general' && (
@@ -809,11 +808,10 @@ export default function Dashboard() {
                     <span className="text-[10px] font-bold text-slate-300">{msg.user}</span>
                     <span className="text-[9px] text-slate-500 font-mono">{msg.time}</span>
                   </div>
-                  <div className={`p-3 rounded-xl text-xs leading-relaxed break-words border ${
-                    msg.self 
-                      ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none' 
+                  <div className={`p-3 rounded-xl text-xs leading-relaxed break-words border ${msg.self
+                      ? 'bg-indigo-600 text-white border-indigo-500 rounded-tr-none'
                       : 'bg-slate-900 text-slate-300 border-slate-800 rounded-tl-none'
-                  }`}>
+                    }`}>
                     {msg.text}
                   </div>
                 </div>
@@ -852,7 +850,7 @@ export default function Dashboard() {
 
   // 3. Standalone Collaborative Drawing Whiteboard Canvas View
   const renderCanvasView = () => (
-    <Whiteboard 
+    <Whiteboard
       socket={socketRef.current}
       roomId={null}
       userName="Yashwantika G."
@@ -861,7 +859,7 @@ export default function Dashboard() {
       historyIndex={wbHistoryIndex}
       setHistoryIndex={setWbHistoryIndex}
       isExplainMode={false}
-      setIsExplainMode={() => {}}
+      setIsExplainMode={() => { }}
       explainModeSpeaker={null}
       inCall={false}
     />
@@ -885,11 +883,11 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="bg-slate-900/20 border border-slate-800/80 rounded-2xl p-6">
-          <FileShare 
-            roomId={activeRoomId || 'global-vault'} 
-            socket={socketRef.current} 
-            files={meetingFiles} 
-            setFiles={setMeetingFiles} 
+          <FileShare
+            roomId={activeRoomId || 'global-vault'}
+            socket={socketRef.current}
+            files={meetingFiles}
+            setFiles={setMeetingFiles}
           />
         </div>
       </div>
@@ -945,11 +943,10 @@ export default function Dashboard() {
             <button
               key={f}
               onClick={() => setEditorFile(f)}
-              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-                editorFile === f 
-                  ? 'bg-slate-800 text-white shadow-md' 
+              className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${editorFile === f
+                  ? 'bg-slate-800 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
-              }`}
+                }`}
             >
               {f}
             </button>
@@ -1033,17 +1030,16 @@ export default function Dashboard() {
               <button
                 key={symbol}
                 onClick={() => setTradingAsset(symbol)}
-                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  tradingAsset === symbol 
-                    ? 'bg-slate-850 text-white shadow-md' 
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${tradingAsset === symbol
+                    ? 'bg-slate-850 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
-                }`}
+                  }`}
               >
                 {symbol}
               </button>
             ))}
           </div>
-          
+
           <div className="text-right">
             <span className="text-xl font-black text-white font-mono block">${asset.price.toLocaleString()}</span>
             <span className={`text-[10px] font-bold font-mono ${asset.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -1061,13 +1057,13 @@ export default function Dashboard() {
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Interactive Live Feed</span>
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
             </div>
-            
+
             <div className="w-full h-48 relative overflow-visible z-10">
               <svg className="w-full h-full text-indigo-500 overflow-visible" viewBox="0 0 500 180" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="tradingChartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.25"/>
-                    <stop offset="100%" stopColor="#4f46e5" stopOpacity="0"/>
+                    <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
                   </linearGradient>
                 </defs>
                 <path
@@ -1176,7 +1172,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen w-screen bg-brandBg text-brandText overflow-hidden font-sans select-none">
-      
+
       {/* --- Left Sidebar Navigation --- */}
       <aside className="w-64 bg-brandCard border-r border-slate-800 flex flex-col flex-shrink-0 z-20">
         {/* App Logo & Header */}
@@ -1187,46 +1183,57 @@ export default function Dashboard() {
         {/* Vertical Navigation Links */}
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           {[
-            { id: 'overview', label: 'Overview', icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-              </svg>
-            )},
+            {
+              id: 'overview', label: 'Overview', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                </svg>
+              )
+            },
 
-            { id: 'chat', label: 'Chat Workspace', icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379L12 21l2.62-3.132c1.154-.086 2.296-.213 3.423-.379 1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-              </svg>
-            )},
-            { id: 'meet', label: 'Meet Hub', icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.51 18h11.25a2.25 2.25 0 0 0 2.25-2.25V8.25A2.25 2.25 0 0 0 15.76 6H4.51a2.25 2.25 0 0 0-2.25 2.25v7.5A2.25 2.25 0 0 0 4.51 18Z" />
-              </svg>
-            )},
-            { id: 'canvas', label: 'Whiteboard', icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
-              </svg>
-            )},
-            { id: 'fileshare', label: 'File Share', icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
-              </svg>
-            )},
-            { id: 'contacts', label: 'Contacts Directory', icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-              </svg>
-            )}
+            {
+              id: 'chat', label: 'Chat Workspace', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379L12 21l2.62-3.132c1.154-.086 2.296-.213 3.423-.379 1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                </svg>
+              )
+            },
+            {
+              id: 'meet', label: 'Meet Hub', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.51 18h11.25a2.25 2.25 0 0 0 2.25-2.25V8.25A2.25 2.25 0 0 0 15.76 6H4.51a2.25 2.25 0 0 0-2.25 2.25v7.5A2.25 2.25 0 0 0 4.51 18Z" />
+                </svg>
+              )
+            },
+            {
+              id: 'canvas', label: 'Whiteboard', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                </svg>
+              )
+            },
+            {
+              id: 'fileshare', label: 'File Share', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+                </svg>
+              )
+            },
+            {
+              id: 'contacts', label: 'Contacts Directory', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                </svg>
+              )
+            }
           ].map((item) => (
             <button
               key={item.id}
               onClick={() => navigateToView(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl transition-all relative ${
-                currentView === item.id 
-                  ? 'bg-brandPrimary text-brandBg shadow-lg shadow-brandPrimary/15' 
+              className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold rounded-xl transition-all relative ${currentView === item.id
+                  ? 'bg-brandPrimary text-brandBg shadow-lg shadow-brandPrimary/15'
                   : 'text-slate-400 hover:text-brandText hover:bg-slate-850'
-              }`}
+                }`}
             >
               {item.icon}
               {item.label}
@@ -1251,7 +1258,7 @@ export default function Dashboard() {
 
       {/* --- Dynamic Content Area (Right-hand Side) --- */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden bg-brandBg">
-        
+
         {/* Top Header */}
         <header className="h-16 border-b border-slate-800/80 bg-brandCard/40 px-6 flex items-center justify-between flex-shrink-0 relative">
           <div className="flex items-center gap-3 select-none">
@@ -1277,7 +1284,7 @@ export default function Dashboard() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>Connected: US-East-1 (12ms)</span>
             </div>
-            
+
             {/* Reward Center */}
             <div className="relative">
               <button

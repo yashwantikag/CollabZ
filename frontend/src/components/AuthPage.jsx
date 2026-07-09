@@ -41,9 +41,16 @@ export default function AuthPage({ onAuthSuccess, onBack }) {
         const decryptedString = await decryptData(encryptedData, SECRET_KEY);
         const data = JSON.parse(decryptedString);
         setIsLoading(false)
-        setSuccessMessage(data?.message || 'Verification code dispatched successfully.')
+        setSuccessMessage(data?.message || 'Verification code dispatched!')
         setError('')
         setTimer(60)
+
+        // --- MOBILE KEYBOARD FOCUS RELEASE FIX ---
+        if (document.activeElement) {
+          document.activeElement.blur();
+        }
+        // -----------------------------------------
+
         setStep('code')
       } catch (err) {
         console.error('[Auth] Decryption failed for otp-sent:', err);
@@ -155,7 +162,7 @@ export default function AuthPage({ onAuthSuccess, onBack }) {
   const handleVerify = async (e) => {
     e.preventDefault()
     const enteredCode = code.join('')
-    
+
     if (enteredCode.length < 6) {
       setError('Please enter the complete 6-digit verification code.')
       return
@@ -167,9 +174,9 @@ export default function AuthPage({ onAuthSuccess, onBack }) {
     // Emit verify-otp event to the backend socket
     if (socketRef.current) {
       try {
-        const encrypted = await encryptData(JSON.stringify({ 
-          email: email.trim(), 
-          otp: enteredCode 
+        const encrypted = await encryptData(JSON.stringify({
+          email: email.trim(),
+          otp: enteredCode
         }), SECRET_KEY);
         socketRef.current.emit('verify-otp', encrypted)
       } catch (err) {
@@ -241,7 +248,7 @@ export default function AuthPage({ onAuthSuccess, onBack }) {
 
   return (
     <div className="min-h-screen bg-brandBg text-brandText flex flex-col lg:grid lg:grid-cols-2 font-sans selection:bg-brandPrimary/30 selection:text-brandPrimary overflow-y-auto relative">
-      
+
       {/* Prominent Back to Home Button floating in top-left */}
       <button
         type="button"
@@ -299,22 +306,22 @@ export default function AuthPage({ onAuthSuccess, onBack }) {
 
       {/* --- RIGHT SIDE: Authentication Form Card --- */}
       <section className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 relative bg-brandBg">
-        
+
         {/* Mobile Header (Shown on small viewports) */}
         <div className="flex items-center justify-start lg:hidden mb-8 mt-12 select-none">
           <img src={AppLogo} alt="CollabZ Logo" className="h-10 w-auto object-contain" />
         </div>
 
         <div className="max-w-md w-full mx-auto space-y-8 animate-[fadeIn_0.2s_ease-out]">
-          
+
           {/* Headline */}
           <div>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-white">
               {step === 'email' ? 'Enterprise Access' : 'Verify Identity'}
             </h3>
             <p className="text-slate-400 text-xs mt-2">
-              {step === 'email' 
-                ? 'Access your synchronized channels and canvases with passwordless OTP.' 
+              {step === 'email'
+                ? 'Access your synchronized channels and canvases with passwordless OTP.'
                 : 'Enter the 6-digit verification code sent to your email.'}
             </p>
           </div>
@@ -360,7 +367,7 @@ export default function AuthPage({ onAuthSuccess, onBack }) {
           ) : (
             /* Step 2: 6-Digit OTP Form */
             <form onSubmit={handleVerify} className="space-y-6">
-              
+
               {/* Styled display of email (read-only) with option to edit */}
               <div className="flex items-center justify-between p-3.5 rounded-lg bg-brandCard border border-slate-850 text-xs">
                 <div>
