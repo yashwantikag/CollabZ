@@ -13,416 +13,414 @@ const SECRET_KEY = import.meta.env.VITE_SOCKET_ENCRYPTION_KEY || 'default-fallba
 const SECRET_CHAT_KEY = "CollabZ_Secure_Vault_2026";
 
 export default function Dashboard() {
-  const socketRef = useRef(null)
-  const [currentView, setCurrentView] = useState('overview') // 'overview', 'channels', 'canvas', 'editor', 'trading', 'analytics', 'meet'
 
-  const navigateToView = (newView, pushState = true) => {
-    if (pushState) {
-      window.history.pushState({ view: newView }, '', '')
-    }
-    setCurrentView(newView)
+}
+const socketRef = useRef(null)
+const [currentView, setCurrentView] = useState('overview') // 'overview', 'channels', 'canvas', 'editor', 'trading', 'analytics', 'meet'
+
+const navigateToView = (newView, pushState = true) => {
+  if (pushState) {
+    window.history.pushState({ view: newView }, '', '')
+  }
+  setCurrentView(newView)
+}
+
+useEffect(() => {
+  // Force-enable browser arrows by populating history stack
+  window.history.replaceState({ view: 'overview' }, '', '')
+  window.history.pushState({ view: 'overview' }, '', '')
+
+  const handlePopState = (event) => {
+    const targetView = (event.state && event.state.view) ? event.state.view : 'overview'
+    navigateToView(targetView, false)
   }
 
-  useEffect(() => {
-    // Force-enable browser arrows by populating history stack
-    window.history.replaceState({ view: 'overview' }, '', '')
-    window.history.pushState({ view: 'overview' }, '', '')
+  window.addEventListener('popstate', handlePopState)
+  return () => {
+    window.removeEventListener('popstate', handlePopState)
+  }
+}, [])
+const [selectedChannel, setSelectedChannel] = useState('#general')
+const [tradingAsset, setTradingAsset] = useState('BTC')
+const [editorFile, setEditorFile] = useState('App.jsx')
 
-    const handlePopState = (event) => {
-      const targetView = (event.state && event.state.view) ? event.state.view : 'overview'
-      navigateToView(targetView, false)
-    }
+// --- Collaborative Editor Content State ---
+const [editorContent, setEditorContent] = useState({
+  'App.jsx': `import React, { useState } from 'react';\nimport AuthPage from './components/AuthPage';\nimport Dashboard from './components/Dashboard';\n\nexport default function App() {\n  const [isAuth, setIsAuth] = useState(false);\n  return isAuth ? <Dashboard /> : <AuthPage onAuthSuccess={() => setIsAuth(true)} />;\n}`,
+  'server.js': `const express = require('express');\nconst http = require('http');\nconst { Server } = require('socket.io');\n\nconst app = express();\nconst server = http.createServer(app);\nconst io = new Server(server);\n\nio.on('connection', (socket) => {\n  console.log('User connected: ' + socket.id);\n});`,
+  'index.css': `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n\nbody {\n  background-color: #020617;\n  color: #f8fafc;\n}`
+})
 
-    window.addEventListener('popstate', handlePopState)
-    return () => {
-      window.removeEventListener('popstate', handlePopState)
-    }
-  }, [])
-  const [selectedChannel, setSelectedChannel] = useState('#general')
-  const [tradingAsset, setTradingAsset] = useState('BTC')
-  const [editorFile, setEditorFile] = useState('App.jsx')
+// --- Real-time Ticker Simulation (Trading Dashboard) ---
+const [assets, setAssets] = useState({
+  BTC: { price: 68420.50, change: 2.45, history: [68100, 68250, 68050, 68310, 68400, 68420.50] },
+  ETH: { price: 3450.25, change: -1.15, history: [3490, 3480, 3465, 3470, 3445, 3450.25] },
+  SOL: { price: 145.80, change: 5.12, history: [138, 140, 142, 141, 144, 145.80] },
+  AAPL: { price: 189.20, change: 0.35, history: [188.5, 188.9, 189.1, 188.8, 189.0, 189.2] },
+  NVDA: { price: 920.45, change: 8.75, history: [880, 895, 905, 910, 915, 920.45] }
+})
 
-  // --- Collaborative Editor Content State ---
-  const [editorContent, setEditorContent] = useState({
-    'App.jsx': `import React, { useState } from 'react';\nimport AuthPage from './components/AuthPage';\nimport Dashboard from './components/Dashboard';\n\nexport default function App() {\n  const [isAuth, setIsAuth] = useState(false);\n  return isAuth ? <Dashboard /> : <AuthPage onAuthSuccess={() => setIsAuth(true)} />;\n}`,
-    'server.js': `const express = require('express');\nconst http = require('http');\nconst { Server } = require('socket.io');\n\nconst app = express();\nconst server = http.createServer(app);\nconst io = new Server(server);\n\nio.on('connection', (socket) => {\n  console.log('User connected: ' + socket.id);\n});`,
-    'index.css': `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n\nbody {\n  background-color: #020617;\n  color: #f8fafc;\n}`
+useEffect(() => {
+  const interval = setInterval(() => {
+    setAssets((prev) => {
+      const next = { ...prev }
+      Object.keys(next).forEach((key) => {
+        const asset = next[key]
+        const delta = (Math.random() - 0.47) * (asset.price * 0.0012)
+        const newPrice = Number((asset.price + delta).toFixed(2))
+        const newHistory = [...asset.history.slice(1), newPrice]
+        next[key] = {
+          ...asset,
+          price: newPrice,
+          change: Number((asset.change + (delta / asset.price) * 100).toFixed(2)),
+          history: newHistory
+        }
+      })
+      return next
+    })
+  }, 2500)
+  return () => clearInterval(interval)
+}, [])
+
+// --- Reward Center State ---
+const [showRewardPopover, setShowRewardPopover] = useState(false)
+
+// --- Meet Module State ---
+const [activeRoomId, setActiveRoomId] = useState(null)
+const [meetingLinks, setMeetingLinks] = useState([
+  { id: 'meet_1', name: 'Design Review Sync', code: 'dsn-revy-syc', url: 'http://localhost:5173/meet/dsn-revy-syc', createdAt: 'Jul 1, 2026' },
+  { id: 'meet_2', name: 'Frontend Refactor Planning', code: 'frt-plan-syc', url: 'http://localhost:5173/meet/frt-plan-syc', createdAt: 'Jun 30, 2026' }
+])
+const [scheduledMeetings, setScheduledMeetings] = useState([
+  { id: 'sched_1', name: 'Weekly Architecture Alignment', date: '2026-07-02', time: '14:30', description: 'Reviewing next-gen collaboration schema', code: 'arc-align-syc', url: 'http://localhost:5173/meet/arc-align-syc' }
+])
+const [meetingFiles, setMeetingFiles] = useState([])
+const [isExplainMode, setIsExplainMode] = useState(false)
+const [explainModeSpeaker, setExplainModeSpeaker] = useState(null)
+const [showCallWhiteboard, setShowCallWhiteboard] = useState(false)
+const [showCallFiles, setShowCallFiles] = useState(true)
+const [showSyncModal, setShowSyncModal] = useState(false)
+
+// Whiteboard States (Persists drawing context across tab switches)
+const [wbHistory, setWbHistory] = useState([])
+const [wbHistoryIndex, setWbHistoryIndex] = useState(-1)
+
+// Persistent Drawing Stroke Buffer for Tab Switching
+const pendingStrokesRef = useRef([])
+const onStrokeReceivedCallback = useRef(null)
+
+// --- Video Call State ---
+const [isMuted, setIsMuted] = useState(false)
+const [isVideoOn, setIsVideoOn] = useState(true)
+const [isScreenSharing, setIsScreenSharing] = useState(false)
+const [localStream, setLocalStream] = useState(null)
+const [remoteStream, setRemoteStream] = useState(null)
+const [isInCall, setIsInCall] = useState(false)
+
+// --- WebRTC Refs ---
+const pcRef = useRef(null)
+const localStreamRef = useRef(null)
+const activeRoomIdRef = useRef(null)
+const localVideoRef = useRef(null)
+const remoteVideoRef = useRef(null)
+
+// Sync localStreamRef with localStream state for reliable unmount cleanup
+useEffect(() => {
+  localStreamRef.current = localStream
+}, [localStream])
+
+// Sync activeRoomIdRef with activeRoomId state for access in socket listeners
+useEffect(() => {
+  activeRoomIdRef.current = activeRoomId
+}, [activeRoomId])
+
+// --- Chat State ---
+const [messages, setMessages] = useState([
+  {
+    id: 1,
+    user: 'Alex Rivera',
+    text: "Hey team! I've started sketching the main application flow. Feel free to add ideas.",
+    time: '19:35',
+    self: false,
+    avatarColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+  },
+  {
+    id: 2,
+    user: 'Sarah Jenkins',
+    text: 'Looks great! I think we should add a direct database connection layer right here in the center.',
+    time: '19:36',
+    self: false,
+    avatarColor: 'bg-pink-500/20 text-pink-400 border-pink-500/30'
+  },
+  {
+    id: 3,
+    user: 'Alex Rivera',
+    text: 'Good point. Let me select the pink brush to mark that path.',
+    time: '19:37',
+    self: false,
+    avatarColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+  }
+])
+const [chatInput, setChatInput] = useState('')
+const chatEndRef = useRef(null)
+
+// --- Predefined Colors ---
+const colors = [
+  { value: '#6366f1', name: 'Indigo' },
+  { value: '#ec4899', name: 'Pink' },
+  { value: '#10b981', name: 'Emerald' },
+  { value: '#f59e0b', name: 'Amber' },
+  { value: '#ffffff', name: 'White' },
+]
+
+// --- Auto-scroll Chat to Bottom ---
+useEffect(() => {
+  chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+}, [messages, currentView])
+
+// Setup Socket.io connection for real-time encrypted communication
+useEffect(() => {
+  const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  socketRef.current = io(BACKEND_URL)
+
+  socketRef.current.on('connect', () => {
+    console.log('Dashboard connected to socket server')
   })
 
-  // --- Real-time Ticker Simulation (Trading Dashboard) ---
-  const [assets, setAssets] = useState({
-    BTC: { price: 68420.50, change: 2.45, history: [68100, 68250, 68050, 68310, 68400, 68420.50] },
-    ETH: { price: 3450.25, change: -1.15, history: [3490, 3480, 3465, 3470, 3445, 3450.25] },
-    SOL: { price: 145.80, change: 5.12, history: [138, 140, 142, 141, 144, 145.80] },
-    AAPL: { price: 189.20, change: 0.35, history: [188.5, 188.9, 189.1, 188.8, 189.0, 189.2] },
-    NVDA: { price: 920.45, change: 8.75, history: [880, 895, 905, 910, 915, 920.45] }
+  // Listen for encrypted chat messages
+  socketRef.current.on('receive-chat-message', async (encryptedPayload) => {
+    try {
+      let decryptedString
+      try {
+        const bytes = CryptoJS.AES.decrypt(encryptedPayload, SECRET_CHAT_KEY)
+        decryptedString = bytes.toString(CryptoJS.enc.Utf8)
+        if (!decryptedString) throw new Error("Empty decrypted string")
+      } catch (cryptoErr) {
+        decryptedString = await decryptData(encryptedPayload, SECRET_KEY)
+      }
+      const incomingMessage = JSON.parse(decryptedString);
+      incomingMessage.self = false;
+      setMessages((prev) => [...prev, incomingMessage]);
+    } catch (err) {
+      console.error('Failed to decrypt incoming chat message:', err);
+    }
   })
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAssets((prev) => {
-        const next = { ...prev }
-        Object.keys(next).forEach((key) => {
-          const asset = next[key]
-          const delta = (Math.random() - 0.47) * (asset.price * 0.0012)
-          const newPrice = Number((asset.price + delta).toFixed(2))
-          const newHistory = [...asset.history.slice(1), newPrice]
-          next[key] = {
-            ...asset,
-            price: newPrice,
-            change: Number((asset.change + (delta / asset.price) * 100).toFixed(2)),
-            history: newHistory
-          }
-        })
-        return next
-      })
-    }, 2500)
-    return () => clearInterval(interval)
-  }, [])
-
-  // --- Reward Center State ---
-  const [showRewardPopover, setShowRewardPopover] = useState(false)
-
-  // --- Meet Module State ---
-  const [activeRoomId, setActiveRoomId] = useState(null)
-  const [meetingLinks, setMeetingLinks] = useState([
-    { id: 'meet_1', name: 'Design Review Sync', code: 'dsn-revy-syc', url: 'http://localhost:5173/meet/dsn-revy-syc', createdAt: 'Jul 1, 2026' },
-    { id: 'meet_2', name: 'Frontend Refactor Planning', code: 'frt-plan-syc', url: 'http://localhost:5173/meet/frt-plan-syc', createdAt: 'Jun 30, 2026' }
-  ])
-  const [scheduledMeetings, setScheduledMeetings] = useState([
-    { id: 'sched_1', name: 'Weekly Architecture Alignment', date: '2026-07-02', time: '14:30', description: 'Reviewing next-gen collaboration schema', code: 'arc-align-syc', url: 'http://localhost:5173/meet/arc-align-syc' }
-  ])
-  const [meetingFiles, setMeetingFiles] = useState([])
-  const [isExplainMode, setIsExplainMode] = useState(false)
-  const [explainModeSpeaker, setExplainModeSpeaker] = useState(null)
-  const [showCallWhiteboard, setShowCallWhiteboard] = useState(false)
-  const [showCallFiles, setShowCallFiles] = useState(true)
-  const [showSyncModal, setShowSyncModal] = useState(false)
-
-  // Whiteboard States (Persists drawing context across tab switches)
-  const [wbHistory, setWbHistory] = useState([])
-  const [wbHistoryIndex, setWbHistoryIndex] = useState(-1)
-
-  // Persistent Drawing Stroke Buffer for Tab Switching
-  const pendingStrokesRef = useRef([])
-  const onStrokeReceivedCallback = useRef(null)
-
-  // --- Video Call State ---
-  const [isMuted, setIsMuted] = useState(false)
-  const [isVideoOn, setIsVideoOn] = useState(true)
-  const [isScreenSharing, setIsScreenSharing] = useState(false)
-  const [localStream, setLocalStream] = useState(null)
-  const [remoteStream, setRemoteStream] = useState(null)
-  const [isInCall, setIsInCall] = useState(false)
-
-  // --- WebRTC Refs ---
-  const pcRef = useRef(null)
-  const localStreamRef = useRef(null)
-  const activeRoomIdRef = useRef(null)
-  const localVideoRef = useRef(null)
-  const remoteVideoRef = useRef(null)
-
-  // Sync localStreamRef with localStream state for reliable unmount cleanup
-  useEffect(() => {
-    localStreamRef.current = localStream
-  }, [localStream])
-
-  // Sync activeRoomIdRef with activeRoomId state for access in socket listeners
-  useEffect(() => {
-    activeRoomIdRef.current = activeRoomId
-  }, [activeRoomId])
-
-  // --- Chat State ---
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      user: 'Alex Rivera',
-      text: "Hey team! I've started sketching the main application flow. Feel free to add ideas.",
-      time: '19:35',
-      self: false,
-      avatarColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-    },
-    {
-      id: 2,
-      user: 'Sarah Jenkins',
-      text: 'Looks great! I think we should add a direct database connection layer right here in the center.',
-      time: '19:36',
-      self: false,
-      avatarColor: 'bg-pink-500/20 text-pink-400 border-pink-500/30'
-    },
-    {
-      id: 3,
-      user: 'Alex Rivera',
-      text: 'Good point. Let me select the pink brush to mark that path.',
-      time: '19:37',
-      self: false,
-      avatarColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+  // Listen for encrypted drawing strokes (Buffered for tab switching)
+  socketRef.current.on('receive-draw-stroke', async (encryptedPayload) => {
+    try {
+      const decryptedString = await decryptData(encryptedPayload, SECRET_KEY);
+      const stroke = JSON.parse(decryptedString);
+      pendingStrokesRef.current.push(stroke);
+      if (onStrokeReceivedCallback.current) {
+        onStrokeReceivedCallback.current();
+      }
+    } catch (err) {
+      console.error('Failed to decrypt drawing stroke:', err);
     }
-  ])
-  const [chatInput, setChatInput] = useState('')
-  const chatEndRef = useRef(null)
+  })
 
-  // --- Predefined Colors ---
-  const colors = [
-    { value: '#6366f1', name: 'Indigo' },
-    { value: '#ec4899', name: 'Pink' },
-    { value: '#10b981', name: 'Emerald' },
-    { value: '#f59e0b', name: 'Amber' },
-    { value: '#ffffff', name: 'White' },
-  ]
+  // Listen for Explain Mode layouts
+  socketRef.current.on('explain-mode-changed', (data) => {
+    setIsExplainMode(data.isExplainMode);
+    setExplainModeSpeaker(data.isExplainMode ? data.speakerName : null);
+  });
 
-  // --- Auto-scroll Chat to Bottom ---
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, currentView])
-
-  // Setup Socket.io connection for real-time encrypted communication
-  useEffect(() => {
-    const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-    socketRef.current = io(BACKEND_URL)
-
-    socketRef.current.on('connect', () => {
-      console.log('Dashboard connected to socket server')
-    })
-
-    // Listen for encrypted chat messages
-    socketRef.current.on('receive-chat-message', async (encryptedPayload) => {
+  socketRef.current.on('user-joined-meeting', async (data) => {
+    console.log(`[MEET] User joined: ${data.userName}`);
+    if (pcRef.current) {
       try {
-        let decryptedString
-        try {
-          const bytes = CryptoJS.AES.decrypt(encryptedPayload, SECRET_CHAT_KEY)
-          decryptedString = bytes.toString(CryptoJS.enc.Utf8)
-          if (!decryptedString) throw new Error("Empty decrypted string")
-        } catch (cryptoErr) {
-          decryptedString = await decryptData(encryptedPayload, SECRET_KEY)
-        }
-        const incomingMessage = JSON.parse(decryptedString);
-        incomingMessage.self = false;
-        setMessages((prev) => [...prev, incomingMessage]);
+        ensureTracksAdded(pcRef.current, localStreamRef.current);
+        console.log("[WebRTC] Creating SDP offer...");
+        const offer = await pcRef.current.createOffer();
+        await pcRef.current.setLocalDescription(offer);
+        socketRef.current.emit('video-offer', {
+          roomId: activeRoomIdRef.current,
+          offer: offer
+        });
       } catch (err) {
-        console.error('Failed to decrypt incoming chat message:', err);
+        console.error("[WebRTC] Error creating offer on user-joined-meeting:", err);
       }
-    })
+    }
+  });
 
-    // Listen for encrypted drawing strokes (Buffered for tab switching)
-    socketRef.current.on('receive-draw-stroke', async (encryptedPayload) => {
+  socketRef.current.on('user-joined-room', async (data) => {
+    console.log(`[SIGNALLING] User joined room: ${data.userName}`);
+    if (pcRef.current) {
       try {
-        const decryptedString = await decryptData(encryptedPayload, SECRET_KEY);
-        const stroke = JSON.parse(decryptedString);
-        pendingStrokesRef.current.push(stroke);
-        if (onStrokeReceivedCallback.current) {
-          onStrokeReceivedCallback.current();
-        }
+        ensureTracksAdded(pcRef.current, localStreamRef.current);
+        console.log("[WebRTC] Creating SDP offer...");
+        const offer = await pcRef.current.createOffer();
+        await pcRef.current.setLocalDescription(offer);
+        socketRef.current.emit('video-offer', {
+          roomId: activeRoomIdRef.current,
+          offer: offer
+        });
       } catch (err) {
-        console.error('Failed to decrypt drawing stroke:', err);
+        console.error("[WebRTC] Error creating offer on user-joined-room:", err);
       }
+    }
+  });
+
+  socketRef.current.on('video-offer', async (data) => {
+    console.log("[WebRTC] Received video-offer");
+    if (pcRef.current) {
+      try {
+        ensureTracksAdded(pcRef.current, localStreamRef.current);
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pcRef.current.createAnswer();
+        await pcRef.current.setLocalDescription(answer);
+        socketRef.current.emit('video-answer', {
+          roomId: activeRoomIdRef.current,
+          answer: answer
+        });
+      } catch (err) {
+        console.error("[WebRTC] Error handling video offer:", err);
+      }
+    }
+  });
+
+  socketRef.current.on('video-answer', async (data) => {
+    console.log("[WebRTC] Received video-answer");
+    if (pcRef.current) {
+      try {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+      } catch (err) {
+        console.error("[WebRTC] Error setting remote description from answer:", err);
+      }
+    }
+  });
+
+  socketRef.current.on('new-ice-candidate', async (data) => {
+    console.log("[WebRTC] Received remote ICE candidate");
+    if (pcRef.current && data.candidate) {
+      try {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+      } catch (err) {
+        console.error("[WebRTC] Error adding remote ICE candidate:", err);
+      }
+    }
+  });
+
+  socketRef.current.on('user-left-meeting', (data) => {
+    console.log(`[MEET] User left: ${data.userName}`);
+  });
+
+  return () => {
+    if (socketRef.current) {
+      socketRef.current.disconnect()
+    }
+  }
+}, [])
+
+// --- WebRTC & Media Stream Helper Functions ---
+const cleanupMedia = useCallback(() => {
+  if (localStreamRef.current) {
+    localStreamRef.current.getTracks().forEach((track) => {
+      track.stop()
+      console.log(`[Meet] Gracefully stopped local track: ${track.kind}`)
     })
+    setLocalStream(null)
+  }
+  if (pcRef.current) {
+    pcRef.current.close()
+    pcRef.current = null
+    console.log("[WebRTC] Closed PeerConnection")
+  }
+  setRemoteStream(null)
+}, [])
 
-    // Listen for Explain Mode layouts
-    socketRef.current.on('explain-mode-changed', (data) => {
-      setIsExplainMode(data.isExplainMode);
-      setExplainModeSpeaker(data.isExplainMode ? data.speakerName : null);
-    });
-
-    socketRef.current.on('user-joined-meeting', async (data) => {
-      console.log(`[MEET] User joined: ${data.userName}`);
-      if (pcRef.current) {
-        try {
-          ensureTracksAdded(pcRef.current, localStreamRef.current);
-          console.log("[WebRTC] Creating SDP offer...");
-          const offer = await pcRef.current.createOffer();
-          await pcRef.current.setLocalDescription(offer);
-          socketRef.current.emit('video-offer', {
-            roomId: activeRoomIdRef.current,
-            offer: offer
-          });
-        } catch (err) {
-          console.error("[WebRTC] Error creating offer on user-joined-meeting:", err);
-        }
-      }
-    });
-
-    socketRef.current.on('user-joined-room', async (data) => {
-      console.log(`[SIGNALLING] User joined room: ${data.userName}`);
-      if (pcRef.current) {
-        try {
-          ensureTracksAdded(pcRef.current, localStreamRef.current);
-          console.log("[WebRTC] Creating SDP offer...");
-          const offer = await pcRef.current.createOffer();
-          await pcRef.current.setLocalDescription(offer);
-          socketRef.current.emit('video-offer', {
-            roomId: activeRoomIdRef.current,
-            offer: offer
-          });
-        } catch (err) {
-          console.error("[WebRTC] Error creating offer on user-joined-room:", err);
-        }
-      }
-    });
-
-    socketRef.current.on('video-offer', async (data) => {
-      console.log("[WebRTC] Received video-offer");
-      if (pcRef.current) {
-        try {
-          ensureTracksAdded(pcRef.current, localStreamRef.current);
-          await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
-          const answer = await pcRef.current.createAnswer();
-          await pcRef.current.setLocalDescription(answer);
-          socketRef.current.emit('video-answer', {
-            roomId: activeRoomIdRef.current,
-            answer: answer
-          });
-        } catch (err) {
-          console.error("[WebRTC] Error handling video offer:", err);
-        }
-      }
-    });
-
-    socketRef.current.on('video-answer', async (data) => {
-      console.log("[WebRTC] Received video-answer");
-      if (pcRef.current) {
-        try {
-          await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
-        } catch (err) {
-          console.error("[WebRTC] Error setting remote description from answer:", err);
-        }
-      }
-    });
-
-    socketRef.current.on('new-ice-candidate', async (data) => {
-      console.log("[WebRTC] Received remote ICE candidate");
-      if (pcRef.current && data.candidate) {
-        try {
-          await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
-        } catch (err) {
-          console.error("[WebRTC] Error adding remote ICE candidate:", err);
-        }
-      }
-    });
-
-    socketRef.current.on('user-left-meeting', (data) => {
-      console.log(`[MEET] User left: ${data.userName}`);
-    });
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect()
-      }
+const ensureTracksAdded = useCallback((pc, stream) => {
+  if (!pc || !stream) return
+  const senders = pc.getSenders()
+  stream.getTracks().forEach((track) => {
+    const alreadyAdded = senders.some(sender => sender.track === track)
+    if (!alreadyAdded) {
+      console.log(`[WebRTC] Defensively adding track: ${track.kind}`)
+      pc.addTrack(track, stream)
     }
-  }, [])
+  })
+}, [])
 
-  // --- WebRTC & Media Stream Helper Functions ---
-  const cleanupMedia = useCallback(() => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => {
-        track.stop()
-        console.log(`[Meet] Gracefully stopped local track: ${track.kind}`)
-      })
-      setLocalStream(null)
-    }
+const initWebRTC = useCallback((stream) => {
+  try {
     if (pcRef.current) {
       pcRef.current.close()
-      pcRef.current = null
-      console.log("[WebRTC] Closed PeerConnection")
     }
-    setRemoteStream(null)
-  }, [])
 
-  const ensureTracksAdded = useCallback((pc, stream) => {
-    if (!pc || !stream) return
-    const senders = pc.getSenders()
-    stream.getTracks().forEach((track) => {
-      const alreadyAdded = senders.some(sender => sender.track === track)
-      if (!alreadyAdded) {
-        console.log(`[WebRTC] Defensively adding track: ${track.kind}`)
-        pc.addTrack(track, stream)
-      }
+    console.log("[WebRTC] Initializing RTCPeerConnection stubs...")
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     })
-  }, [])
 
-  const initWebRTC = useCallback((stream) => {
-    try {
-      if (pcRef.current) {
-        pcRef.current.close()
+    // Bind track event hooks safely
+    pc.ontrack = (event) => {
+      console.log("[WebRTC] Received remote stream track:", event.streams[0])
+      if (event.streams && event.streams[0]) {
+        setRemoteStream(event.streams[0])
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = event.streams[0]
+        }
       }
+    }
 
-      console.log("[WebRTC] Initializing RTCPeerConnection stubs...")
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log("[WebRTC] Local ICE candidate found, emitting...")
+        if (socketRef.current && activeRoomIdRef.current) {
+          socketRef.current.emit('new-ice-candidate', {
+            roomId: activeRoomIdRef.current,
+            candidate: event.candidate
+          })
+        }
+      }
+    }
+
+    // Add local tracks to peer connection
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream)
       })
-
-      // Bind track event hooks safely
-      pc.ontrack = (event) => {
-        console.log("[WebRTC] Received remote stream track:", event.streams[0])
-        if (event.streams && event.streams[0]) {
-          setRemoteStream(event.streams[0])
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0]
-          }
-        }
-      }
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          console.log("[WebRTC] Local ICE candidate found, emitting...")
-          if (socketRef.current && activeRoomIdRef.current) {
-            socketRef.current.emit('new-ice-candidate', {
-              roomId: activeRoomIdRef.current,
-              candidate: event.candidate
-            })
-          }
-        }
-      }
-
-      // Add local tracks to peer connection
-      if (stream) {
-        stream.getTracks().forEach((track) => {
-          pc.addTrack(track, stream)
-        })
-      }
-
-      pcRef.current = pc
-    } catch (err) {
-      console.error("[WebRTC] Failed to initialize RTCPeerConnection:", err)
     }
-  }, [])
-  const startLocalVideo = async () => {
-    try {
-      console.log("[Meet] Initializing media stream capture...");
-      const constraints = {
-        audio: true,
-        video: {
-          facingMode: "user",
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        }
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      if (typeof setLocalStream === 'function') setLocalStream(stream);
-      if (typeof initWebRTC === 'function') initWebRTC(stream);
-      return stream;
-    } catch (err) {
-      console.error("[Meet] Media access permission error:", err);
-    }
-  };
-}
-;
-[initWebRTC];
-const handleJoinMeeting = async (roomId) => {
-  setActiveRoomId(roomId)
-  setIsInCall(true)
-  navigateToView('meet')
 
-  // 1. Capture local media and configure RTCPeerConnection FIRST
-  await startLocalVideo()
-
-  // 2. Only emit join events after signaling state and local tracks are ready
-  if (socketRef.current) {
-    socketRef.current.emit('join-meeting', { roomId, userName: 'Yashwantika G.' })
-    socketRef.current.emit('join-room', { roomId, userName: 'Yashwantika G.' })
+    pcRef.current = pc
+  } catch (err) {
+    console.error("[WebRTC] Failed to initialize RTCPeerConnection:", err)
   }
-}
+}, [])
+const startLocalVideo = async () => {
+  try {
+    console.log("[Meet] Initializing media stream capture...");
+    const constraints = {
+      audio: true,
+      video: {
+        facingMode: "user",
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+      }
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    if (typeof setLocalStream === 'function') setLocalStream(stream);
+    if (typeof initWebRTC === 'function') initWebRTC(stream);
+    return stream;
+  } catch (err) {
+    console.error("[Meet] Media access permission error:", err);
+  }
+};
 
+const handleJoinMeeting = async (roomId) => {
+  setInCall(true);
+  if (typeof setActiveRoomId === 'function') setActiveRoomId(roomId);
+  if (typeof navigateToView === 'function') navigateToView('meet');
+
+  // 1. Capture local media FIRST
+  await startLocalVideo();
+
+  // 2. Emit join event after tracks are ready
+  if (socketRef.current) {
+    socketRef.current.emit("join-room", { roomId });
+  }
+};
 const handleLeaveMeeting = () => {
   if (socketRef.current && activeRoomId) {
     socketRef.current.emit('leave-meeting', { roomId: activeRoomId, userName: 'Yashwantika G.' })
